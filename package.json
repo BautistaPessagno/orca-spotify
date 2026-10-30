@@ -1,0 +1,12 @@
+{
+  "name": "orca-now-playing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Orca plugin that controls the Spotify desktop app on macOS.",
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test"
+  }
+}

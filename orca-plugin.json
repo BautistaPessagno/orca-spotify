@@ -1,0 +1,30 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stablyai/orca/main/docs/schemas/plugins/orca-plugin.v2.schema.json",
+  "manifestVersion": 2,
+  "execution": "trusted-worker",
+  "id": "now-playing",
+  "publisher": "bautistapessagno",
+  "name": "Now Playing",
+  "version": "0.1.0",
+  "description": "Control the Spotify desktop app on your Mac from Orca's command palette and shortcuts. Not affiliated with Spotify.",
+  "author": { "name": "Bautista Pessagno", "url": "https://github.com/BautistaPessagno" },
+  "repository": "https://github.com/BautistaPessagno/orca-spotify",
+  "license": "MIT",
+  "engines": { "orca": ">=1.4.245" },
+  "pluginApi": 1,
+  "main": "worker.mjs",
+  "contributes": {
+    "commands": [
+      { "id": "playpause", "title": "Spotify: Play / Pause" },
+      { "id": "next", "title": "Spotify: Next track" },
+      { "id": "previous", "title": "Spotify: Previous track" },
+      { "id": "now", "title": "Spotify: Now playing" },
+      { "id": "toggleShuffle", "title": "Spotify: Toggle shuffle" }
+    ],
+    "keybindings": [
+      { "command": "playpause", "key": "Mod+Alt+Shift+P" },
+      { "command": "next", "key": "Mod+Alt+Shift+N" },
+      { "command": "previous", "key": "Mod+Alt+Shift+B" }
+    ]
+  }
+}
