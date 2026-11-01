@@ -3,142 +3,312 @@
   <head>
     <meta charset="utf-8" />
     <style>
-      /* Orca injects its design tokens as --orca-* custom properties. */
-      body {
-        margin: 0;
-        padding: 4px 16px 18px;
-        font-family: system-ui, sans-serif;
-        font-size: 13px;
-        color: var(--orca-foreground, #e6e6e6);
-        background: var(--orca-background, transparent);
+      /* Orca injects its design tokens as --orca-* custom properties and a light/dark class on <html>. */
+      :root {
+        --bg: var(--orca-background, #161616);
+        --fg: var(--orca-foreground, #ececec);
+        --muted: var(--orca-muted-foreground, #8f8f8f);
+        --hover: var(--orca-accent, rgba(255, 255, 255, 0.08));
+        --on: var(--orca-primary, var(--fg));
+        --track: color-mix(in srgb, var(--fg) 16%, transparent);
+        --radius: 10px;
       }
+      * { box-sizing: border-box; }
       [hidden] { display: none !important; }
-      .muted { color: var(--orca-muted-foreground, #8d8d8d); }
-      .player { display: grid; gap: 16px; }
-      .art {
+      html, body { margin: 0; overflow-x: hidden; }
+      body {
+        font: 13px/1.4 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+        color: var(--fg);
+        background: var(--bg);
+        -webkit-font-smoothing: antialiased;
+        user-select: none;
+      }
+      button { font: inherit; color: inherit; cursor: pointer; }
+      svg { display: block; }
+
+      /* ---------- player ---------- */
+      .player { position: relative; padding: 14px 18px 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+      /* The cover, blurred, glows behind the top of the panel and fades into the background. */
+      .backdrop {
+        position: absolute;
+        inset: -40px -40px auto;
+        height: 380px;
+        background: center / cover no-repeat;
+        filter: blur(48px) saturate(1.5);
+        opacity: 0;
+        transition: opacity 600ms ease;
+        -webkit-mask-image: linear-gradient(to bottom, #000 30%, transparent);
+        mask-image: linear-gradient(to bottom, #000 30%, transparent);
+        pointer-events: none;
+      }
+      .backdrop.on { opacity: 0.32; }
+      .player > *:not(.backdrop) { position: relative; }
+
+      .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .eq { display: flex; align-items: flex-end; gap: 2px; height: 10px; }
+      .eq i { width: 2px; height: 3px; border-radius: 1px; background: currentColor; }
+      .playing .eyebrow { color: var(--fg); }
+      .playing .eq i { animation: eq 900ms ease-in-out infinite alternate; }
+      .playing .eq i:nth-child(2) { animation-delay: -300ms; }
+      .playing .eq i:nth-child(3) { animation-delay: -600ms; }
+      @keyframes eq { from { height: 3px; } to { height: 10px; } }
+
+      .cover {
         aspect-ratio: 1;
         width: 100%;
-        border-radius: 8px;
-        background: var(--orca-secondary, #2a2a2a);
-        object-fit: cover;
+        border-radius: var(--radius);
+        overflow: hidden;
+        background: var(--track);
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 32px -10px rgba(0, 0, 0, 0.55);
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+        transition: transform 300ms ease;
       }
-      .track { display: grid; gap: 2px; min-width: 0; }
-      .track b, .track span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .track b { font-size: 16px; font-weight: 600; }
-      .bar { display: grid; gap: 4px; }
-      .bar-track { height: 4px; background: var(--orca-border, #333); border-radius: 2px; overflow: hidden; }
-      .bar-fill { height: 100%; width: 0; background: var(--orca-foreground, #e6e6e6); }
-      .times { display: flex; justify-content: space-between; font-size: 11px; font-variant-numeric: tabular-nums; }
-      .controls { display: flex; align-items: center; justify-content: center; gap: 14px; }
-      button {
-        font: inherit;
-        color: inherit;
+      .paused .cover { transform: scale(0.96); }
+      .cover img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 300ms ease; }
+      .cover img.on { opacity: 1; }
+      .cover .ph { grid-area: 1 / 1; width: 34%; height: 34%; opacity: 0.5; }
+      .cover img { grid-area: 1 / 1; }
+      .cover:has(img.on) .ph { display: none; }
+
+      .meta { display: grid; gap: 1px; min-width: 0; padding-top: 2px; }
+      .meta .title { font-size: 16px; font-weight: 650; letter-spacing: -0.01em; }
+      .meta .sub { color: var(--muted); }
+      .meta .title, .meta .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+      /* ---------- sliders (seek and volume) ---------- */
+      .slider {
+        --val: 0%;
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 16px;
+        margin: 0;
+        background: transparent;
         cursor: pointer;
       }
+      .slider::-webkit-slider-runnable-track {
+        height: 4px;
+        border-radius: 2px;
+        background: linear-gradient(to right, var(--fg) var(--val), var(--track) var(--val));
+      }
+      .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 12px;
+        height: 12px;
+        margin-top: -4px;
+        border-radius: 50%;
+        background: var(--fg);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        transform: scale(0);
+        transition: transform 120ms ease;
+      }
+      .slider:hover::-webkit-slider-thumb,
+      .slider:active::-webkit-slider-thumb,
+      .slider:focus-visible::-webkit-slider-thumb { transform: scale(1); }
+      .slider:focus-visible { outline: none; }
+      .slider:focus-visible::-webkit-slider-runnable-track { box-shadow: 0 0 0 2px var(--orca-ring, var(--fg)); }
+
+      .seek { display: grid; gap: 2px; }
+      .times {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* ---------- controls ---------- */
+      .controls { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; }
       .ctl {
+        position: relative;
         width: 36px;
         height: 36px;
         display: grid;
         place-items: center;
+        padding: 0;
         border: 0;
         border-radius: 50%;
         background: transparent;
+        transition: background 120ms ease, transform 80ms ease, color 120ms ease;
       }
-      .ctl svg { width: 18px; height: 18px; }
-      .ctl.toggle { color: var(--orca-muted-foreground, #8d8d8d); }
-      .ctl.toggle[aria-pressed='true'] { color: var(--orca-primary, #3fcf9f); }
-      .ctl.main {
-        width: 46px;
-        height: 46px;
-        background: var(--orca-foreground, #e6e6e6);
-        color: var(--orca-background, #1c1c1c);
+      .ctl:hover { background: var(--hover); }
+      .ctl:active { transform: scale(0.92); }
+      .ctl:focus-visible, .btn:focus-visible, .icon-btn:focus-visible {
+        outline: 2px solid var(--orca-ring, var(--fg));
+        outline-offset: 2px;
       }
-      .ctl:focus-visible, .btn:focus-visible { outline: 2px solid var(--orca-primary, #3fcf9f); outline-offset: 2px; }
-      .vol { display: flex; align-items: center; gap: 10px; }
-      .vol input { flex: 1; min-width: 0; accent-color: var(--orca-foreground, #e6e6e6); }
-      .empty { display: grid; gap: 10px; padding-top: 24px; line-height: 1.5; }
-      .empty b { font-size: 14px; }
-      .empty p, .empty ol { margin: 0; }
-      .empty ol { padding-left: 18px; }
-      .btn {
-        justify-self: start;
+      .ctl svg { width: 20px; height: 20px; }
+      .ctl.toggle { color: var(--muted); }
+      .ctl.toggle svg { width: 16px; height: 16px; }
+      .ctl.toggle[aria-pressed='true'] { color: var(--on); }
+      .ctl.toggle[aria-pressed='true']::after {
+        content: '';
+        position: absolute;
+        bottom: 3px;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+      .ctl.main { width: 50px; height: 50px; background: var(--fg); color: var(--bg); }
+      .ctl.main:hover { background: var(--fg); transform: scale(1.04); }
+      .ctl.main:active { transform: scale(0.96); }
+      .ctl.main svg { width: 22px; height: 22px; }
+
+      .volume { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+      .icon-btn {
+        flex: none;
+        width: 26px;
+        height: 26px;
+        display: grid;
+        place-items: center;
+        padding: 0;
         border: 0;
         border-radius: 6px;
-        padding: 7px 12px;
-        background: var(--orca-foreground, #e6e6e6);
-        color: var(--orca-background, #1c1c1c);
-        font-weight: 500;
+        background: transparent;
+        color: var(--muted);
       }
-      kbd { font: 11px ui-monospace, Menlo, monospace; }
-      .foot { font-size: 11.5px; border-top: 1px solid var(--orca-border, #333); padding-top: 12px; }
+      .icon-btn:hover { background: var(--hover); color: var(--fg); }
+      .icon-btn svg { width: 16px; height: 16px; }
+
+      /* ---------- empty states ---------- */
+      .empty {
+        display: grid;
+        justify-items: center;
+        gap: 10px;
+        padding: 56px 24px;
+        text-align: center;
+        line-height: 1.5;
+      }
+      .empty .badge {
+        width: 52px;
+        height: 52px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--hover);
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      .empty .badge svg { width: 24px; height: 24px; }
+      .empty b { font-size: 14px; font-weight: 600; }
+      .empty p { margin: 0; color: var(--muted); max-width: 260px; }
+      .empty ol { margin: 0; padding-left: 18px; color: var(--muted); text-align: left; }
+      .empty kbd { font: 11px ui-monospace, Menlo, monospace; color: var(--fg); }
+      .btn {
+        margin-top: 6px;
+        border: 0;
+        border-radius: 999px;
+        padding: 7px 16px;
+        background: var(--fg);
+        color: var(--bg);
+        font-weight: 600;
+      }
+      .btn:hover { opacity: 0.9; }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation: none !important; transition: none !important; }
+      }
     </style>
   </head>
   <body>
     <svg width="0" height="0" style="position: absolute" aria-hidden="true">
-      <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z" /></symbol>
-      <symbol id="i-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></symbol>
-      <symbol id="i-next" viewBox="0 0 24 24" fill="currentColor"><path d="M5 5.2v13.6a.8.8 0 0 0 1.2.7l10-6.8a.8.8 0 0 0 0-1.4l-10-6.8A.8.8 0 0 0 5 5.2z" /><rect x="17.5" y="5" width="2.2" height="14" rx="1" /></symbol>
-      <symbol id="i-prev" viewBox="0 0 24 24" fill="currentColor"><path d="M19 5.2v13.6a.8.8 0 0 1-1.2.7l-10-6.8a.8.8 0 0 1 0-1.4l10-6.8a.8.8 0 0 1 1.2.7z" /><rect x="4.3" y="5" width="2.2" height="14" rx="1" /></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.52.85l11.1-6.86a1 1 0 0 0 0-1.7L9.52 4.29A1 1 0 0 0 8 5.14z" /></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4.5" width="4" height="15" rx="1.2" /><rect x="14" y="4.5" width="4" height="15" rx="1.2" /></symbol>
+      <symbol id="i-next" viewBox="0 0 24 24" fill="currentColor"><path d="M5 6.07v11.86a1 1 0 0 0 1.55.83l8.7-5.93a1 1 0 0 0 0-1.66l-8.7-5.93A1 1 0 0 0 5 6.07z" /><rect x="17" y="5" width="2.4" height="14" rx="1.2" /></symbol>
+      <symbol id="i-prev" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.07v11.86a1 1 0 0 1-1.55.83l-8.7-5.93a1 1 0 0 1 0-1.66l8.7-5.93A1 1 0 0 1 19 6.07z" /><rect x="4.6" y="5" width="2.4" height="14" rx="1.2" /></symbol>
       <symbol id="i-shuffle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22" /><path d="m18 2 4 4-4 4" /><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2" /><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8" /><path d="m18 14 4 4-4 4" /></symbol>
       <symbol id="i-repeat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" /><path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" /></symbol>
+      <symbol id="i-vol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M19 5a10 10 0 0 1 0 14" /></symbol>
+      <symbol id="i-vol-low" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /></symbol>
+      <symbol id="i-mute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z" /><path d="m22 9-6 6" /><path d="m16 9 6 6" /></symbol>
+      <symbol id="i-music" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 8v4" /><path d="M12 16h.01" /></symbol>
     </svg>
 
-    <div class="player" id="v-player" hidden>
-      <img class="art" id="art" alt="" />
-      <div class="track">
-        <b id="title"></b>
-        <span class="muted" id="subtitle"></span>
+    <main class="player" id="v-player" hidden>
+      <div class="backdrop" id="backdrop"></div>
+      <div class="eyebrow"><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span id="eyebrow">Now playing</span></div>
+      <div class="cover">
+        <svg class="ph"><use href="#i-music" /></svg>
+        <img id="art" alt="" />
       </div>
-      <div class="bar">
-        <div class="bar-track"><div class="bar-fill" id="fill"></div></div>
-        <div class="times muted"><span id="pos">0:00</span><span id="dur">0:00</span></div>
+      <div class="meta">
+        <div class="title" id="title"></div>
+        <div class="sub" id="artist"></div>
+      </div>
+      <div class="seek">
+        <input type="range" class="slider" id="seek" min="0" max="1" step="1" value="0" aria-label="Position" />
+        <div class="times"><span id="pos">0:00</span><span id="dur">0:00</span></div>
       </div>
       <div class="controls">
-        <button type="button" class="ctl toggle" data-cmd="toggleShuffle" id="shuffle" aria-label="Shuffle" aria-pressed="false"><svg><use href="#i-shuffle" /></svg></button>
-        <button type="button" class="ctl" data-cmd="previous" aria-label="Previous"><svg><use href="#i-prev" /></svg></button>
-        <button type="button" class="ctl main" data-cmd="playpause" id="play" aria-label="Play"><svg><use href="#i-play" id="play-icon" /></svg></button>
-        <button type="button" class="ctl" data-cmd="next" aria-label="Next"><svg><use href="#i-next" /></svg></button>
-        <button type="button" class="ctl toggle" data-cmd="toggleRepeat" id="repeat" aria-label="Repeat" aria-pressed="false"><svg><use href="#i-repeat" /></svg></button>
+        <button type="button" class="ctl toggle" id="shuffle" aria-label="Shuffle" aria-pressed="false"><svg><use href="#i-shuffle" /></svg></button>
+        <button type="button" class="ctl" id="prev" aria-label="Previous"><svg><use href="#i-prev" /></svg></button>
+        <button type="button" class="ctl main" id="play" aria-label="Play"><svg><use href="#i-play" id="play-icon" /></svg></button>
+        <button type="button" class="ctl" id="next" aria-label="Next"><svg><use href="#i-next" /></svg></button>
+        <button type="button" class="ctl toggle" id="repeat" aria-label="Repeat" aria-pressed="false"><svg><use href="#i-repeat" /></svg></button>
       </div>
-      <label class="vol muted">Vol <input type="range" id="vol" min="0" max="100" aria-label="Volume" /></label>
-    </div>
+      <div class="volume">
+        <button type="button" class="icon-btn" id="mute" aria-label="Mute"><svg><use href="#i-vol" id="vol-icon" /></svg></button>
+        <input type="range" class="slider" id="vol" min="0" max="100" step="1" aria-label="Volume" />
+      </div>
+    </main>
 
     <div class="empty" id="v-message" hidden>
+      <div class="badge"><svg><use href="#i-music" id="msg-icon" /></svg></div>
       <b id="msg-title"></b>
-      <p class="muted" id="msg-body"></p>
+      <p id="msg-body"></p>
       <button type="button" class="btn" id="msg-action" hidden></button>
     </div>
-
-    <!-- Orca without the panel↔worker channel: a panel can't reach its worker, so point to the commands. -->
-    <div class="empty" id="v-legacy" hidden>
-      <b>This Orca can't run the player panel yet</b>
-      <p class="muted">Panels need to talk to the plugin's worker, which arrives in a newer Orca. Until then, use the command palette (type "Spotify") or the shortcuts:</p>
-      <p><kbd>⌘⌥⇧P</kbd> play / pause · <kbd>⌘⌥⇧N</kbd> next · <kbd>⌘⌥⇧B</kbd> previous</p>
-    </div>
-
-    <p class="foot muted" id="foot" hidden>Controls the Spotify app on this Mac. <kbd>⌘⌥⇧P</kbd> play / pause · <kbd>⌘⌥⇧N</kbd> next</p>
 
     <script>
       'use strict'
       // Orca injects a frozen window.orca before this script runs.
       var $ = function (id) { return document.getElementById(id) }
       var POLL_MS = 1000
+      var HIDDEN_POLL_MS = 4000
+
       var state = null
       var stateAt = 0
       var timer = null
       var artworkUrl = null
+      var dragging = false
+      var lastVolume = 50
+      // Each request gets a number. A reply older than the last command's is stale (it was read
+      // before the command ran), so it never overwrites what the command showed.
+      var requestSeq = 0
+      var appliedSeq = 0
+      var commandsInFlight = 0
 
       function fmt(ms) {
         var s = Math.max(0, Math.floor(ms / 1000))
         return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0')
       }
 
-      function show(view) {
-        ;['v-player', 'v-message', 'v-legacy'].forEach(function (id) { $(id).hidden = id !== view })
-        $('foot').hidden = view !== 'v-player'
+      function setSlider(el, value) {
+        el.value = value
+        var max = Number(el.max) || 1
+        el.style.setProperty('--val', (Math.min(value, max) / max) * 100 + '%')
       }
 
-      function showMessage(title, body, action) {
+      function show(view) {
+        ;['v-player', 'v-message'].forEach(function (id) { $(id).hidden = id !== view })
+      }
+
+      function showMessage(icon, title, body, action) {
+        $('msg-icon').setAttribute('href', icon)
         $('msg-title').textContent = title
         $('msg-body').textContent = body
         $('msg-action').hidden = !action
@@ -146,16 +316,29 @@
           $('msg-action').textContent = action.label
           $('msg-action').onclick = action.run
         }
+        document.body.className = ''
         show('v-message')
       }
 
-      // Moves the progress bar between polls so it doesn't jump once a second.
-      function renderProgress() {
-        if (!state || !state.track) return
+      function positionNow() {
+        if (!state || !state.track) return 0
         var pos = state.positionMs + (state.status === 'playing' ? Date.now() - stateAt : 0)
-        pos = Math.min(pos, state.track.durationMs)
-        $('fill').style.width = (state.track.durationMs ? (pos / state.track.durationMs) * 100 : 0) + '%'
+        return Math.min(pos, state.track.durationMs)
+      }
+
+      // Moves the progress between polls so it doesn't jump once a second.
+      function renderProgress() {
+        if (!state || !state.track || dragging) return
+        var pos = positionNow()
+        setSlider($('seek'), Math.floor(pos / 1000))
         $('pos').textContent = fmt(pos)
+      }
+
+      function renderVolume(volume) {
+        setSlider($('vol'), volume)
+        var icon = volume === 0 ? '#i-mute' : volume < 50 ? '#i-vol-low' : '#i-vol'
+        $('vol-icon').setAttribute('href', icon)
+        $('mute').setAttribute('aria-label', volume === 0 ? 'Unmute' : 'Mute')
       }
 
       function render(next) {
@@ -163,28 +346,35 @@
         stateAt = Date.now()
         switch (next.status) {
           case 'closed':
-            return showMessage('Spotify is not open', 'Open the Spotify desktop app and this panel updates by itself.', {
+            return showMessage('#i-music', 'Spotify is not open', 'Open the Spotify desktop app and this panel updates by itself.', {
               label: 'Open Spotify',
-              run: function () { send({ type: 'command', cmd: 'open' }) }
+              run: function () { command('open') }
             })
           case 'no-permission':
-            return showMessage('Orca is not allowed to control Spotify', next.message, { label: 'Try again', run: poll })
+            return showMessage('#i-lock', 'Orca can’t control Spotify', next.message, { label: 'Try again', run: poll })
           case 'unsupported':
           case 'error':
-            return showMessage('Spotify is unavailable', next.message, { label: 'Try again', run: poll })
+            return showMessage('#i-alert', 'Spotify is unavailable', next.message, { label: 'Try again', run: poll })
         }
-        if (!next.track) return showMessage('Nothing is playing', 'Start something in Spotify.', null)
+        if (!next.track) return showMessage('#i-music', 'Nothing is playing', 'Start something in Spotify and it shows up here.', null)
 
         show('v-player')
-        $('title').textContent = next.track.title
-        $('subtitle').textContent = [next.track.artist, next.track.album].filter(Boolean).join(' · ')
-        $('dur').textContent = fmt(next.track.durationMs)
         var playing = next.status === 'playing'
+        document.body.className = playing ? 'playing' : 'paused'
+        $('eyebrow').textContent = playing ? 'Now playing' : 'Paused'
+        $('title').textContent = next.track.title
+        $('title').title = next.track.title
+        var sub = [next.track.artist, next.track.album].filter(Boolean).join(' · ')
+        $('artist').textContent = sub
+        $('artist').title = sub
         $('play-icon').setAttribute('href', playing ? '#i-pause' : '#i-play')
         $('play').setAttribute('aria-label', playing ? 'Pause' : 'Play')
         $('shuffle').setAttribute('aria-pressed', String(next.shuffle))
         $('repeat').setAttribute('aria-pressed', String(next.repeat))
-        if (document.activeElement !== $('vol')) $('vol').value = next.volume
+        $('seek').max = Math.max(1, Math.floor(next.track.durationMs / 1000))
+        $('dur').textContent = fmt(next.track.durationMs)
+        if (document.activeElement !== $('vol')) renderVolume(next.volume)
+        if (next.volume > 0) lastVolume = next.volume
         renderProgress()
         loadArtwork(next.track.artworkUrl)
       }
@@ -192,50 +382,122 @@
       function loadArtwork(url) {
         if (url === artworkUrl) return
         artworkUrl = url
-        $('art').removeAttribute('src')
+        $('art').classList.remove('on')
+        $('backdrop').classList.remove('on')
         if (!url) return
-        orca.panel.postMessage({ type: 'getArtwork', url: url }).then(function (reply) {
-          if (reply && reply.url === artworkUrl && reply.dataUrl) $('art').src = reply.dataUrl
+        orca.plugin.request('player.artwork', { url: url }).then(function (reply) {
+          if (!reply || reply.url !== artworkUrl || !reply.dataUrl) return
+          $('art').src = reply.dataUrl
+          $('art').classList.add('on')
+          $('backdrop').style.backgroundImage = 'url("' + reply.dataUrl + '")'
+          $('backdrop').classList.add('on')
         }, function () {})
       }
 
       function schedule(ms) {
         clearTimeout(timer)
-        if (document.visibilityState === 'visible') timer = setTimeout(poll, ms)
+        timer = setTimeout(poll, ms || (document.hidden ? HIDDEN_POLL_MS : POLL_MS))
       }
 
-      function send(message) {
-        return orca.panel.postMessage(message).then(
-          function (next) { render(next); schedule(POLL_MS) },
+      function fail(error) {
+        if (error && error.code === 'cancelled') return
+        if (error && error.code === 'rate_limited') return schedule(error.retryAfterMs || POLL_MS * 3)
+        showMessage('#i-alert', 'Spotify is unavailable', (error && error.message) || String(error), { label: 'Try again', run: poll })
+        schedule(POLL_MS * 5)
+      }
+
+      function poll() {
+        var seq = ++requestSeq
+        return orca.plugin.request('player.state').then(function (next) {
+          if (seq > appliedSeq && commandsInFlight === 0) {
+            appliedSeq = seq
+            render(next)
+          }
+          schedule()
+        }, fail)
+      }
+
+      // Sends a command after `optimistic` has already updated the panel, so a click shows at once;
+      // the worker's reply (the state once Spotify applied it) then confirms or corrects it.
+      function command(cmd, value, optimistic) {
+        if (optimistic && state && state.track) {
+          optimistic(state)
+          render(state)
+        }
+        var seq = ++requestSeq
+        commandsInFlight++
+        // Input must be JSON, so leave `value` out rather than send undefined.
+        var input = value === undefined ? { cmd: cmd } : { cmd: cmd, value: value }
+        return orca.plugin.request('player.command', input).then(
+          function (next) {
+            commandsInFlight--
+            if (seq > appliedSeq) {
+              appliedSeq = seq
+              render(next)
+            }
+            schedule()
+          },
           function (error) {
-            if (error && error.code === 'rate_limited') return schedule(error.retryAfterMs || POLL_MS * 3)
-            if (error && error.code === 'cancelled') return
-            showMessage('Spotify is unavailable', (error && error.message) || String(error), { label: 'Try again', run: poll })
-            schedule(POLL_MS * 5)
+            commandsInFlight--
+            fail(error)
           }
         )
       }
 
-      function poll() { return send({ type: 'getState' }) }
+      function freezePosition(s) {
+        s.positionMs = positionNow()
+      }
 
-      if (typeof window.orca?.panel?.postMessage !== 'function') {
-        show('v-legacy')
-      } else {
-        document.querySelectorAll('[data-cmd]').forEach(function (button) {
-          button.addEventListener('click', function () {
-            send({ type: 'command', cmd: button.dataset.cmd })
+      function wire() {
+        $('play').addEventListener('click', function () {
+          var playing = state && state.status === 'playing'
+          command(playing ? 'pause' : 'play', undefined, function (s) {
+            freezePosition(s)
+            s.status = playing ? 'paused' : 'playing'
           })
         })
+        $('next').addEventListener('click', function () {
+          command('next', undefined, function (s) { s.positionMs = 0 })
+        })
+        $('prev').addEventListener('click', function () {
+          command('previous', undefined, function (s) { s.positionMs = 0 })
+        })
+        $('shuffle').addEventListener('click', function () {
+          command('toggleShuffle', undefined, function (s) { freezePosition(s); s.shuffle = !s.shuffle })
+        })
+        $('repeat').addEventListener('click', function () {
+          command('toggleRepeat', undefined, function (s) { freezePosition(s); s.repeat = !s.repeat })
+        })
+
+        $('seek').addEventListener('input', function () {
+          dragging = true
+          setSlider($('seek'), Number($('seek').value))
+          $('pos').textContent = fmt(Number($('seek').value) * 1000)
+        })
+        $('seek').addEventListener('change', function () {
+          var seconds = Number($('seek').value)
+          dragging = false
+          command('seek', seconds, function (s) { s.positionMs = seconds * 1000 })
+        })
+
+        $('vol').addEventListener('input', function () { renderVolume(Number($('vol').value)) })
         $('vol').addEventListener('change', function () {
-          send({ type: 'command', cmd: 'setVolume', value: Number($('vol').value) })
+          var volume = Number($('vol').value)
+          command('setVolume', volume, function (s) { freezePosition(s); s.volume = volume })
         })
+        $('mute').addEventListener('click', function () {
+          var volume = state && state.volume > 0 ? 0 : lastVolume
+          command('setVolume', volume, function (s) { freezePosition(s); s.volume = volume })
+        })
+
         document.addEventListener('visibilitychange', function () {
-          if (document.visibilityState === 'visible') poll()
-          else clearTimeout(timer)
+          if (!document.hidden) poll()
         })
-        setInterval(renderProgress, 250)
-        poll()
+        setInterval(renderProgress, 200)
       }
+
+      wire()
+      poll()
     </script>
   </body>
 </html>

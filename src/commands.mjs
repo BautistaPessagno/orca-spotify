@@ -1,11 +1,7 @@
 // Palette commands. Orca shows a command's string result as-is, so every handler
 // answers with a sentence, including the "Spotify is closed" and permission cases.
 import { MESSAGES, classifyError } from '../backends/applescript.mjs'
-
-// Spotify swaps the current track a moment after next/previous returns.
-const TRACK_CHANGE_DELAY_MS = 350
-
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+import { runAndSettle } from './settle.mjs'
 
 export function describe(state) {
   if (state.message) return state.message
@@ -15,23 +11,22 @@ export function describe(state) {
   return state.status === 'paused' ? `Paused: ${label}` : label
 }
 
-export function createCommands(spotify, { delay = wait } = {}) {
+export function createCommands(spotify, options) {
   // Runs a player command, then answers with the state it left Spotify in.
-  const control = (name, summarize = describe, settleMs = 0) => async () => {
+  const control = (name, summarize = describe) => async () => {
     try {
-      if (!(await spotify.command(name))) return MESSAGES.closed
+      const { ran, state } = await runAndSettle(spotify, name, undefined, options)
+      if (!ran) return MESSAGES.closed
+      return state.message ?? summarize(state)
     } catch (error) {
       return classifyError(error).message
     }
-    if (settleMs) await delay(settleMs)
-    const state = await spotify.getState()
-    return state.message ?? summarize(state)
   }
 
   return {
     playpause: control('playpause'),
-    next: control('next', describe, TRACK_CHANGE_DELAY_MS),
-    previous: control('previous', describe, TRACK_CHANGE_DELAY_MS),
+    next: control('next'),
+    previous: control('previous'),
     now: async () => describe(await spotify.getState()),
     toggleShuffle: control('toggleShuffle', (state) => `Shuffle ${state.shuffle ? 'on' : 'off'}`)
   }

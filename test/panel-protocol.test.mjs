@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createPanelHandler, smallArtworkUrl } from '../src/panel-protocol.mjs'
+import { createPanelHandlers, smallArtworkUrl } from '../src/panel-protocol.mjs'
 
 const state = { status: 'playing', track: { title: 'Song' } }
 
@@ -22,27 +22,26 @@ function fakeFetch(bytes = 1000) {
   return { fetchImpl, urls }
 }
 
-test('getState and command return the player state', async () => {
+test('state and command return the player state', async () => {
   const spotify = fakeSpotify()
-  const handle = createPanelHandler(spotify)
-  assert.equal(await handle({ type: 'getState' }), state)
-  assert.equal(await handle({ type: 'command', cmd: 'setVolume', value: 10 }), state)
+  const handlers = createPanelHandlers(spotify)
+  assert.equal(await handlers['player.state'](), state)
+  assert.equal(await handlers['player.command']({ cmd: 'setVolume', value: 10 }), state)
   assert.deepEqual(spotify.calls, [['setVolume', 10]])
 })
 
-test('unknown commands and messages are refused', async () => {
-  const handle = createPanelHandler(fakeSpotify())
-  await assert.rejects(handle({ type: 'command', cmd: 'quit' }), /Unknown command/)
-  await assert.rejects(handle({ type: 'eval' }), /Unknown panel message/)
-  await assert.rejects(handle(null), /Unknown panel message/)
+test('unknown commands are refused', async () => {
+  const command = createPanelHandlers(fakeSpotify())['player.command']
+  await assert.rejects(command({ cmd: 'quit' }), /Unknown command/)
+  await assert.rejects(command(undefined), /Unknown command/)
 })
 
 test('artwork is fetched once per track at 300px and returned as a data URL', async () => {
   const { fetchImpl, urls } = fakeFetch()
-  const handle = createPanelHandler(fakeSpotify(), { fetchImpl })
+  const artwork = createPanelHandlers(fakeSpotify(), { fetchImpl })['player.artwork']
   const url = 'https://i.scdn.co/image/ab67616d0000b273abc'
-  const first = await handle({ type: 'getArtwork', url })
-  await handle({ type: 'getArtwork', url })
+  const first = await artwork({ url })
+  await artwork({ url })
   assert.match(first.dataUrl, /^data:image\/jpeg;base64,/)
   assert.deepEqual(urls, [smallArtworkUrl(url)])
   assert.match(urls[0], /ab67616d00001e02abc$/)
@@ -50,8 +49,8 @@ test('artwork is fetched once per track at 300px and returned as a data URL', as
 
 test('artwork outside Spotify\'s CDN or too large is not returned', async () => {
   const { fetchImpl, urls } = fakeFetch(200 * 1024)
-  const handle = createPanelHandler(fakeSpotify(), { fetchImpl })
-  assert.equal((await handle({ type: 'getArtwork', url: 'http://127.0.0.1:8080/x' })).dataUrl, null)
+  const artwork = createPanelHandlers(fakeSpotify(), { fetchImpl })['player.artwork']
+  assert.equal((await artwork({ url: 'http://127.0.0.1:8080/x' })).dataUrl, null)
   assert.equal(urls.length, 0)
-  assert.equal((await handle({ type: 'getArtwork', url: 'https://i.scdn.co/image/big' })).dataUrl, null)
+  assert.equal((await artwork({ url: 'https://i.scdn.co/image/big' })).dataUrl, null)
 })

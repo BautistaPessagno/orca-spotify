@@ -1,8 +1,7 @@
-// Now Playing worker: palette commands on every Orca, plus the sidebar panel's
-// backend on an Orca that can route panel messages to the worker (stablyai/orca#25129).
+// Now Playing worker: palette commands, and the handlers the sidebar panel calls.
 import { createAppleScriptBackend } from './backends/applescript.mjs'
 import { createCommands } from './src/commands.mjs'
-import { createPanelHandler } from './src/panel-protocol.mjs'
+import { createPanelHandlers } from './src/panel-protocol.mjs'
 
 export default function activate(orca) {
   const spotify = createAppleScriptBackend()
@@ -11,8 +10,7 @@ export default function activate(orca) {
     orca.commands.register(id, handler)
   }
 
-  // Older Orca has no orca.panels; the commands above are then the whole plugin.
-  if (typeof orca.panels?.onMessage === 'function') {
-    orca.panels.onMessage('player', createPanelHandler(spotify))
+  for (const [name, handler] of Object.entries(createPanelHandlers(spotify))) {
+    orca.panels.handle(name, handler)
   }
 }

@@ -25,6 +25,8 @@ const STATE_SCRIPT = [
 
 const COMMANDS = {
   playpause: () => 'playpause',
+  play: () => 'play',
+  pause: () => 'pause',
   next: () => 'next track',
   previous: () => 'previous track',
   toggleShuffle: () => 'set shuffling to not shuffling',
@@ -35,6 +37,14 @@ const COMMANDS = {
       throw new SpotifyError('invalid', 'Volume must be a number from 0 to 100.')
     }
     return `set sound volume to ${volume}`
+  },
+  // Whole seconds: AppleScript reads a decimal point by the system locale.
+  seek: (value) => {
+    const seconds = Math.round(Number(value))
+    if (!Number.isFinite(seconds) || seconds < 0) {
+      throw new SpotifyError('invalid', 'Position must be a number of seconds.')
+    }
+    return `set player position to ${seconds}`
   }
 }
 

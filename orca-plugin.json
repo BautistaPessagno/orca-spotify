@@ -10,7 +10,7 @@
   "author": { "name": "Bautista Pessagno", "url": "https://github.com/BautistaPessagno" },
   "repository": "https://github.com/BautistaPessagno/orca-spotify",
   "license": "MIT",
-  "engines": { "orca": ">=1.4.245" },
+  "engines": { "orca": ">=1.4.246" },
   "pluginApi": 1,
   "main": "worker.mjs",
   "contributes": {
@@ -25,6 +25,9 @@
       { "command": "playpause", "key": "Mod+Alt+Shift+P" },
       { "command": "next", "key": "Mod+Alt+Shift+N" },
       { "command": "previous", "key": "Mod+Alt+Shift+B" }
+    ],
+    "panels": [
+      { "id": "player", "title": "Now Playing", "icon": "play", "entry": "panel/index.html" }
     ]
   }
 }
