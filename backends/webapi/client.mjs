@@ -83,6 +83,7 @@ export function createClient({ auth, fetchImpl = globalThis.fetch, now = Date.no
     if (response.status === 404 && (reason === 'NO_ACTIVE_DEVICE' || /no active device/i.test(detail ?? ''))) {
       throw new SpotifyError('no-device', MESSAGES.noDevice)
     }
+    if (response.status === 403 && /scope/i.test(detail ?? '')) throw new SpotifyError('scope', MESSAGES.needsScopes)
     if (response.status === 403) {
       // Spotify also answers 403 for actions the current playback forbids (skipping an ad,
       // seeking a live stream). Those say so; everything else is Premium or the user list.

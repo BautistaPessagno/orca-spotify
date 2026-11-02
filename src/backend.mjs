@@ -29,7 +29,7 @@ export const REPEAT_MODES = Object.freeze(['off', 'context', 'track'])
 export const BACKEND_IDS = Object.freeze(['applescript', 'webapi'])
 
 // What a search can look for (backends with the `search` capability).
-export const SEARCH_TYPES = Object.freeze(['track', 'album', 'artist', 'playlist'])
+export const SEARCH_TYPES = Object.freeze(['track', 'album', 'artist', 'playlist', 'show', 'episode'])
 
 export const MESSAGES = Object.freeze({
   unsupported: 'Now Playing controls the Spotify desktop app, which it can only reach on macOS.',
@@ -43,7 +43,8 @@ export const MESSAGES = Object.freeze({
   premium: 'Needs Spotify Premium, and your account must be on the app’s user list.',
   rateLimited: 'Spotify asked Now Playing to slow down. It tries again in a moment.',
   quota: 'Your Spotify app’s request quota ran out. Now Playing tries again in 5 minutes.',
-  noOpen: 'The Spotify Web API can’t open Spotify. Open it on any device.'
+  noOpen: 'The Spotify Web API can’t open Spotify. Open it on any device.',
+  needsScopes: 'Reconnect Spotify to turn on Home, your library and Liked Songs.'
 })
 
 export class SpotifyError extends Error {

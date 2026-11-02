@@ -13,7 +13,7 @@
   "engines": { "orca": ">=1.4.246" },
   "pluginApi": 1,
   "main": "worker.mjs",
-  "capabilities": [{ "kind": "secrets:own" }, { "kind": "settings:own" }],
+  "capabilities": [{ "kind": "secrets:own" }, { "kind": "settings:own" }, { "kind": "storage:own" }],
   "cover": { "path": "images/cover.png", "alt": "Now Playing: the sidebar player in Orca next to its keyboard shortcuts" },
   "screenshots": [
     { "path": "images/player-dark.png", "alt": "The Now Playing panel playing a track in Orca's dark theme", "caption": "The sidebar player" },

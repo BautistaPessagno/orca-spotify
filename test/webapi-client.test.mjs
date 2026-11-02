@@ -104,3 +104,8 @@ test('network failures and other statuses become explanations', async () => {
   await assert.rejects(client.request('GET', '/me/player'), { kind: 'error', message: /Could not reach Spotify/ })
   await assert.rejects(client.request('GET', '/me/player'), { kind: 'error', message: /500.*Server error/ })
 })
+
+test('a login without a permission Spotify needs asks for a reconnect', async () => {
+  const { client } = setup([reply(403, { error: { status: 403, message: 'Insufficient client scope' } })])
+  await assert.rejects(client.request('GET', '/me/tracks'), { kind: 'scope', message: /Reconnect/ })
+})

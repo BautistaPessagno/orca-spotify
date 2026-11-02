@@ -107,7 +107,8 @@ export function createWebApiBackend({ client, auth }) {
         queue: true,
         search: true,
         playlists: true,
-        library: false,
+        library: true,
+        home: true,
         needsAuth: true,
         poll: POLL
       }

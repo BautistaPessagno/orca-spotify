@@ -404,6 +404,7 @@
 
       .np-top, .np-bottom, .sheet-head, .page-title, .web-only { display: none; }
       .web .np-top, .web .np-bottom, .web .sheet-head { display: flex; align-items: center; gap: 4px; }
+      .web .heart-btn.web-only { display: grid; }
       .web .page-title { display: block; }
       .web .web-only { display: flex; }
       .web .desktop-only { display: none !important; }
@@ -524,6 +525,99 @@
       .bottom-nav button[aria-current='page'] { color: #ffffff; }
       .bottom-nav svg { width: 24px; height: 24px; }
 
+      /* Home, Library and pages */
+      /* Any artwork box, in rows, cards, tiles and page headers: never cropped, an icon until it loads. */
+      .thumb { flex: none; display: grid; place-items: center; overflow: hidden; background: var(--track) center / contain no-repeat; color: var(--muted); }
+      .thumb svg { width: 40%; height: 40%; max-width: 48px; max-height: 48px; }
+      .quick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .quick-tile {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 48px;
+        min-width: 0;
+        padding: 0 8px 0 0;
+        border: 0;
+        border-radius: 4px;
+        background: #2a2a2a;
+        color: #ffffff;
+        overflow: hidden;
+        text-align: left;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .quick-tile:hover { background: #3a3a3a; }
+      .quick-tile .thumb { width: 48px; height: 48px; border-radius: 0; }
+      .quick-tile b { min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 700; }
+      .quick-tile.current b { color: var(--accent); }
+      .shelf { display: flex; gap: 14px; overflow-x: auto; margin: 0 -16px; padding: 0 16px 4px; scrollbar-width: none; }
+      .shelf::-webkit-scrollbar { display: none; }
+      .card {
+        flex: none;
+        width: 124px;
+        display: grid;
+        gap: 4px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: #ffffff;
+        text-align: left;
+      }
+      .card .thumb { width: 124px; height: 124px; border-radius: 6px; }
+      .card.artist .thumb { border-radius: 50%; background-size: cover; }
+      .card b, .card span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .card b { font-size: 13px; font-weight: 700; }
+      .card span { font-size: 12px; color: var(--muted); }
+      .card:hover b { text-decoration: underline; }
+      .card:focus-visible, .quick-tile:focus-visible, .top-result:focus-visible, .play-big:focus-visible, .heart-btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+      .thumb.liked { background: #4b2fa0; color: #ffffff; }
+      .thumb.liked svg { width: 45%; height: 45%; }
+      .top-result {
+        position: relative;
+        display: grid;
+        gap: 12px;
+        padding: 16px;
+        border: 0;
+        border-radius: 8px;
+        background: #1f1f1f;
+        color: #ffffff;
+        text-align: left;
+      }
+      .top-result:hover { background: #2a2a2a; }
+      .top-result .thumb { width: 84px; height: 84px; border-radius: 4px; }
+      .top-result.artist .thumb { border-radius: 50%; background-size: cover; }
+      .top-result b { font-size: 22px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 56px; }
+      .top-result span { font-size: 13px; color: var(--muted); }
+      .top-result .pill { justify-self: start; padding: 3px 9px; border-radius: 999px; background: #121212; color: #ffffff; font-size: 12px; font-weight: 700; }
+      .play-big {
+        flex: none;
+        width: 52px;
+        height: 52px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #000000;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
+      }
+      .play-big svg { width: 22px; height: 22px; }
+      .top-result .play-big { position: absolute; right: 16px; bottom: 16px; }
+      .detail-head { display: grid; justify-items: center; gap: 8px; text-align: center; }
+      .detail-head .thumb { width: 200px; height: 200px; border-radius: 6px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55); }
+      .detail-head .thumb.round { border-radius: 50%; background-size: cover; }
+      .detail-head h2 { margin: 6px 0 0; font-size: 24px; font-weight: 800; letter-spacing: -0.01em; }
+      .detail-head p { margin: 0; font-size: 13px; color: var(--muted); }
+      .detail-actions { display: flex; align-items: center; gap: 6px; }
+      .detail-actions .spacer { flex: 1; }
+      .heart-btn { flex: none; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); }
+      .heart-btn svg { width: 22px; height: 22px; }
+      .heart-btn[aria-pressed='true'] { color: var(--accent); }
+      .web .row .thumb.round { border-radius: 50%; background-size: cover; }
+      .row-num { flex: none; width: 20px; text-align: right; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+      .clear-recent { justify-self: center; }
+
       .web .setup { padding: 24px 20px 12px; }
       .web .setup h2 { font-size: 24px; font-weight: 800; }
       .web .steps li::before { background: #2a2a2a; color: #ffffff; }
@@ -562,6 +656,11 @@
       <symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></symbol>
       <symbol id="i-library" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v18" /><path d="M9 3v18" /><path d="m14 3 6 17.5" /></symbol>
       <symbol id="i-plus-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 8v8" /><path d="M8 12h8" /></symbol>
+      <symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z" /></symbol>
+      <symbol id="i-heart-fill" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z" /></symbol>
+      <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5" /><path d="M5 9v11h5v-6h4v6h5V9" /></symbol>
+      <symbol id="i-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 11a7 7 0 0 0 14 0" /><path d="M12 18v4" /></symbol>
+      <symbol id="i-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6" /></symbol>
       <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></symbol>
       <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8" /><path d="M21 3v5h-5" /></symbol>
       <!-- Placeholder for the Spotify icon. Replace it with the official icon from Spotify's
@@ -573,7 +672,7 @@
     <main class="player" id="v-player" hidden>
       <div class="backdrop" id="backdrop"></div>
       <div class="np-top">
-        <button type="button" class="nav-btn" id="np-collapse" aria-label="Your Library" title="Your Library"><svg><use href="#i-chevron-down" /></svg></button>
+        <button type="button" class="nav-btn" id="np-collapse" aria-label="Home" title="Home"><svg><use href="#i-chevron-down" /></svg></button>
         <div class="from"><small id="np-from-kind">Now playing</small><b id="np-from-name"></b></div>
         <span class="nav-btn" aria-hidden="true"></span>
       </div>
@@ -590,6 +689,7 @@
           <div class="title" id="title"></div>
           <div class="sub" id="artist"></div>
         </div>
+        <button type="button" class="heart-btn web-only" id="np-heart" aria-label="Save to Liked Songs" aria-pressed="false" hidden><svg><use href="#i-heart" id="np-heart-icon" /></svg></button>
         <button type="button" class="icon-btn spotify-link" id="open-track" aria-label="Open in Spotify" title="Open in Spotify" hidden><svg><use href="#i-spotify" /></svg></button>
       </div>
       <div class="seek">
@@ -688,14 +788,56 @@
         <button type="button" class="chip-btn" data-filter="album" aria-pressed="false">Albums</button>
         <button type="button" class="chip-btn" data-filter="artist" aria-pressed="false">Artists</button>
         <button type="button" class="chip-btn" data-filter="playlist" aria-pressed="false">Playlists</button>
+        <button type="button" class="chip-btn" data-filter="podcast" aria-pressed="false">Podcasts</button>
       </div>
       <div class="rows" id="search-results"></div>
       <p class="note" id="search-note" hidden></p>
     </section>
 
+    <section class="pane" id="v-home" hidden>
+      <h2 class="page-title" id="home-greeting">Good evening</h2>
+      <div class="warn" id="home-scopes" hidden>Reconnect Spotify to turn on Home, your library and Liked Songs. <button type="button" class="link" data-reconnect>Reconnect</button></div>
+      <div class="quick" id="home-quick"></div>
+      <h3 id="home-recent-title" hidden>Recently played</h3>
+      <div class="shelf" id="home-recent"></div>
+      <h3 id="home-artists-title" hidden>Your top artists</h3>
+      <div class="shelf" id="home-artists"></div>
+      <h3 id="home-songs-title" hidden>Your top songs</h3>
+      <div class="rows" id="home-songs"></div>
+      <p class="note" id="home-note" hidden></p>
+    </section>
+
+    <section class="pane" id="v-detail" hidden>
+      <div class="sheet-head">
+        <button type="button" class="nav-btn" id="detail-back" aria-label="Back"><svg><use href="#i-chevron-left" /></svg></button>
+        <span style="flex: 1"></span>
+      </div>
+      <div class="detail-head">
+        <span class="thumb" id="detail-art"></span>
+        <h2 id="detail-title"></h2>
+        <p id="detail-sub"></p>
+      </div>
+      <div class="detail-actions">
+        <button type="button" class="heart-btn" id="detail-heart" aria-label="Save to your library" aria-pressed="false" hidden><svg><use href="#i-heart" id="detail-heart-icon" /></svg></button>
+        <button type="button" class="icon-btn" id="detail-open" aria-label="Open in Spotify" title="Open in Spotify" hidden><svg><use href="#i-spotify" /></svg></button>
+        <span class="spacer"></span>
+        <button type="button" class="play-big" id="detail-play" aria-label="Play"><svg><use href="#i-play" /></svg></button>
+      </div>
+      <h3 id="detail-list-title" hidden></h3>
+      <div class="rows" id="detail-rows"></div>
+      <button type="button" class="link more" id="detail-more" hidden>Show more</button>
+      <p class="note" id="detail-note" hidden></p>
+    </section>
+
     <section class="pane" id="v-playlists" hidden>
       <h2 class="page-title">Your Library</h2>
-      <div class="chips web-only"><button type="button" class="chip-btn" aria-pressed="true">Playlists</button></div>
+      <div class="warn" id="library-scopes" hidden>Reconnect Spotify to see your Liked Songs, albums and artists. <button type="button" class="link" data-reconnect>Reconnect</button></div>
+      <div class="chips web-only" id="library-filters">
+        <button type="button" class="chip-btn" data-lib="playlists" aria-pressed="false">Playlists</button>
+        <button type="button" class="chip-btn" data-lib="albums" aria-pressed="false">Albums</button>
+        <button type="button" class="chip-btn" data-lib="artists" aria-pressed="false">Artists</button>
+        <button type="button" class="chip-btn" data-lib="shows" aria-pressed="false">Podcasts</button>
+      </div>
       <div class="rows" id="playlist-rows"></div>
       <button type="button" class="link more" id="playlists-more" hidden>Show more</button>
       <p class="note" id="playlists-note" hidden></p>
@@ -738,6 +880,7 @@
         <div class="bar" aria-hidden="true"><i id="mini-bar"></i></div>
       </div>
       <nav class="bottom-nav" aria-label="Now Playing">
+        <button type="button" data-nav="home"><svg><use href="#i-home" /></svg>Home</button>
         <button type="button" data-nav="search"><svg><use href="#i-search" /></svg>Search</button>
         <button type="button" data-nav="playlists"><svg><use href="#i-library" /></svg>Your Library</button>
       </nav>
@@ -819,7 +962,7 @@
 
       // ---------- views ----------
 
-      var VIEWS = ['v-player', 'v-message', 'v-setup', 'v-queue', 'v-search', 'v-playlists', 'v-devices']
+      var VIEWS = ['v-player', 'v-message', 'v-setup', 'v-queue', 'v-search', 'v-playlists', 'v-devices', 'v-home', 'v-detail']
 
       function show(view) {
         VIEWS.forEach(function (id) { $(id).hidden = id !== view })
@@ -827,7 +970,7 @@
       }
 
       // The views a person moves between with the bottom bar (Web API mode).
-      var DOCKED = { 'v-search': true, 'v-playlists': true }
+      var DOCKED = { 'v-search': true, 'v-playlists': true, 'v-home': true, 'v-detail': true }
 
       // Look, bottom bar and footer: what the active backend offers around the current view.
       function renderChrome(view) {
@@ -840,8 +983,9 @@
         var idle = view === 'v-message' && state && !state.track && ['playing', 'paused', 'stopped'].indexOf(state.status) !== -1
         $('dock').hidden = !(connected && (DOCKED[view] || idle))
         document.documentElement.classList.toggle('docked', !$('dock').hidden)
+        var section = tab === 'detail' ? detail.from : tab
         Array.prototype.forEach.call(document.querySelectorAll('[data-nav]'), function (button) {
-          if (button.dataset.nav === tab) button.setAttribute('aria-current', 'page')
+          if (button.dataset.nav === section) button.setAttribute('aria-current', 'page')
           else button.removeAttribute('aria-current')
         })
         renderMini()
@@ -874,7 +1018,8 @@
 
       // "Playing from playlist · Focus". The name comes from a list the panel already read.
       function contextName(context) {
-        var lists = [playlists.items]
+        if (context.type === 'collection') return 'Liked Songs'
+        var lists = [playlists.items, lib.albums.items, lib.artists.items, home.data ? home.data.recent : []]
         ;['albums', 'artists', 'playlists'].forEach(function (key) {
           if (search.sections[key]) lists.push(search.sections[key].items)
         })
@@ -886,7 +1031,7 @@
 
       function renderFrom(next) {
         var context = next.context
-        var kinds = { playlist: 'Playing from playlist', album: 'Playing from album', artist: 'Playing from artist' }
+        var kinds = { playlist: 'Playing from playlist', album: 'Playing from album', artist: 'Playing from artist', collection: 'Playing from your library' }
         var name = context ? contextName(context) : ''
         $('np-from-kind').textContent = (context && kinds[context.type]) || (next.status === 'playing' ? 'Now playing' : 'Paused')
         $('np-from-name').textContent = name
@@ -996,6 +1141,7 @@
         // Read the playlists once, so "Playing from" can name the one playing.
         if (isWebApi() && next.context && !playlists.loaded) loadPlaylists(0)
         renderFrom(next)
+        renderHeart(next.track)
         $('np-device-name').textContent = next.device ? next.device.name : 'Devices'
         $('device-chip').hidden = !next.device
         if (next.device) {
@@ -1117,6 +1263,10 @@
           if (reply.status !== 'connected') return
           setStatus('Connected.')
           stopKeepAlive()
+          // A new login may carry new permissions: read Home and the library again.
+          home.data = null
+          lib.loaded = false
+          hearts = {}
           setupWanted = false
           reconnecting = false
           tab = 'player'
@@ -1262,41 +1412,448 @@
         }, failNote('queue-note'))
       }
 
+      // ---------- items: albums, artists, playlists, shows, Liked Songs ----------
+
+      var PAGE_KINDS = { album: true, artist: true, playlist: true }
+      var ICONS = { album: '#i-disc', artist: '#i-person', playlist: '#i-list', show: '#i-mic', collection: '#i-heart-fill', track: '#i-music', episode: '#i-mic' }
+      var KIND_LABELS = { album: 'Album', artist: 'Artist', playlist: 'Playlist', show: 'Podcast', collection: 'Playlist', track: 'Song', episode: 'Episode' }
+
+      function playingFrom(uri) {
+        return Boolean(state && state.context && state.context.uri === uri)
+      }
+
+      function songsCount(count) {
+        return typeof count === 'number' ? count + (count === 1 ? ' song' : ' songs') : ''
+      }
+
+      // "Album · Artist", "Playlist · Owner · 42 songs", "Artist", "Podcast · Publisher".
+      function subtitleOf(item) {
+        if (item.kind === 'artist') return 'Artist'
+        if (item.kind === 'collection') return ['Playlist', songsCount(lib.liked.total)].filter(Boolean).join(' · ')
+        return [KIND_LABELS[item.kind], item.subtitle, item.kind === 'playlist' ? songsCount(item.count) : ''].filter(Boolean).join(' · ')
+      }
+
+      function likedItem() {
+        return { kind: 'collection', name: 'Liked Songs', uri: lib.liked.uri, artworkUrl: null }
+      }
+
+      // Opens what an item is: a page for albums, artists, playlists and Liked Songs; a show in
+      // Spotify; a song or episode plays.
+      function openItem(item, from) {
+        if (item.kind === 'collection') return openPage(likedItem(), from)
+        if (PAGE_KINDS[item.kind]) return openPage(item, from)
+        if (item.kind === 'show') return openExternal(item.url)
+        play({ uris: [item.uri] })
+      }
+
+      function thumbOf(item, extraClass) {
+        var box = thumb(item.artworkUrl, ICONS[item.kind] || '#i-music')
+        if (item.kind === 'collection') box.classList.add('liked')
+        if (extraClass) box.classList.add(extraClass)
+        return box
+      }
+
+      function itemRow(item, from) {
+        var view = { title: item.name, subtitle: subtitleOf(item), artworkUrl: item.artworkUrl, url: item.url, icon: ICONS[item.kind], current: playingFrom(item.uri) }
+        var built = row(view, function () { remember(item); openItem(item, from) })
+        var box = built.querySelector('.thumb')
+        if (item.kind === 'collection') box.classList.add('liked')
+        if (item.kind === 'artist') box.classList.add('round')
+        return built
+      }
+
+      function card(item, from) {
+        var button = el('button', 'card' + (item.kind === 'artist' ? ' artist' : ''))
+        button.type = 'button'
+        button.appendChild(thumbOf(item))
+        button.appendChild(el('b', '', item.name || item.title))
+        button.appendChild(el('span', '', item.kind === 'track' ? item.artist : subtitleOf(item)))
+        button.title = item.name || item.title
+        button.addEventListener('click', function () { openItem(item, from) })
+        return button
+      }
+
+      function quickTile(item) {
+        var button = el('button', 'quick-tile' + (playingFrom(item.uri) ? ' current' : ''))
+        button.type = 'button'
+        button.appendChild(thumbOf(item))
+        button.appendChild(el('b', '', item.name))
+        button.title = item.name
+        button.addEventListener('click', function () { openItem(item, 'home') })
+        return button
+      }
+
+      // ---------- Home ----------
+
+      var home = { data: null, at: 0 }
+
+      function greeting() {
+        var hour = new Date().getHours()
+        return hour < 5 ? 'Good evening' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+      }
+
+      function missingScopes() {
+        var missing = connection().missingScopes
+        return Boolean(missing && missing.length)
+      }
+
+      function renderHome() {
+        $('home-greeting').textContent = greeting()
+        $('home-scopes').hidden = !missingScopes()
+        var data = home.data
+        ;['home-quick', 'home-recent', 'home-artists', 'home-songs'].forEach(function (id) { $(id).textContent = '' })
+        if (!data) return
+        data.recent.slice(0, 6).forEach(function (item) { $('home-quick').appendChild(quickTile(item)) })
+        data.recentTracks.forEach(function (track) {
+          $('home-recent').appendChild(card({ kind: 'track', title: track.title, artist: track.artist, artworkUrl: track.artworkUrl, uri: track.uri }, 'home'))
+        })
+        data.topArtists.forEach(function (artist) { $('home-artists').appendChild(card(artist, 'home')) })
+        data.topTracks.slice(0, 5).forEach(function (track) {
+          $('home-songs').appendChild(row(trackItem(track), function () { play({ uris: [track.uri] }) }, enqueueButton(track)))
+        })
+        $('home-recent-title').hidden = !data.recentTracks.length
+        $('home-artists-title').hidden = !data.topArtists.length
+        $('home-songs-title').hidden = !data.topTracks.length
+        var empty = !data.recent.length && !data.recentTracks.length && !data.topArtists.length
+        note('home-note', empty ? 'Play some music and Home fills up with it.' : '')
+      }
+
+      function loadHome() {
+        renderHome()
+        // Home changes slowly; read it at most once a minute.
+        if (home.data && Date.now() - home.at < 60 * 1000) return
+        note('home-note', '')
+        request('library.home').then(function (data) {
+          home.data = data
+          home.at = Date.now()
+          if (tab === 'home') renderHome()
+        }, failNote('home-note'))
+      }
+
+      // ---------- Your Library ----------
+
+      var lib = {
+        filter: null,
+        loaded: false,
+        liked: { total: null, uri: null },
+        albums: { items: [] },
+        artists: { items: [] },
+        shows: { items: [] }
+      }
+      var playlists = { items: [], total: 0, loaded: false }
+
+      function loadPlaylists(offset) {
+        playlists.loaded = true
+        return request('library.playlists', { offset: offset }).then(function (page) {
+          playlists.items = offset ? playlists.items.concat(page.items) : page.items
+          playlists.total = page.total
+          if (state && state.context && !$('v-player').hidden) renderFrom(state)
+          if (tab === 'playlists') renderLibrary()
+        }, failNote('playlists-note'))
+      }
+
+      function loadLibrary() {
+        renderLibrary()
+        note('playlists-note', '')
+        if (lib.loaded) return
+        lib.loaded = true
+        loadPlaylists(0)
+        var keep = function (key) {
+          return function (page) {
+            lib[key] = page
+            if (tab === 'playlists') renderLibrary()
+          }
+        }
+        request('library.liked', { offset: 0 }).then(function (page) {
+          lib.liked = { total: page.total, uri: page.uri }
+          if (tab === 'playlists') renderLibrary()
+        }, function () {})
+        request('library.albums', { offset: 0 }).then(keep('albums'), function () {})
+        request('library.artists', {}).then(keep('artists'), function () {})
+        request('library.shows', { offset: 0 }).then(keep('shows'), function () {})
+      }
+
+      function setLibraryFilter(filter) {
+        lib.filter = lib.filter === filter ? null : filter
+        Array.prototype.forEach.call(document.querySelectorAll('[data-lib]'), function (button) {
+          button.setAttribute('aria-pressed', String(button.dataset.lib === lib.filter))
+        })
+        renderLibrary()
+      }
+
+      // Liked Songs first, then playlists, albums, artists and podcasts, or one kind by its chip.
+      function renderLibrary() {
+        $('library-scopes').hidden = !missingScopes()
+        var rows = $('playlist-rows')
+        rows.textContent = ''
+        var f = lib.filter
+        var items = []
+        if ((!f || f === 'playlists') && lib.liked.uri) items.push(likedItem())
+        if (!f || f === 'playlists') items = items.concat(playlists.items)
+        if (!f || f === 'albums') items = items.concat(lib.albums.items)
+        if (!f || f === 'artists') items = items.concat(lib.artists.items)
+        if (!f || f === 'shows') items = items.concat(lib.shows.items)
+        items.forEach(function (item) { rows.appendChild(itemRow(item, 'playlists')) })
+        $('playlists-more').hidden = f !== 'playlists' || playlists.items.length >= playlists.total
+        if (lib.loaded && !items.length && playlists.loaded) note('playlists-note', f ? 'Nothing here yet.' : 'Your library is empty.')
+      }
+
+      // ---------- album, artist, playlist and Liked Songs pages ----------
+
+      var detail = { item: null, page: null, from: 'home', liked: [] }
+
+      function openPage(item, from) {
+        detail = { item: item, page: null, from: from || (tab === 'detail' ? detail.from : tab), liked: [] }
+        tab = 'detail'
+        renderDetail()
+        show('v-detail')
+        window.scrollTo(0, 0)
+        if (item.kind === 'collection') return loadLiked(0)
+        request('library.page', { uri: item.uri }).then(function (page) {
+          if (detail.item !== item) return
+          detail.page = page
+          renderDetail()
+        }, failNote('detail-note'))
+        if (item.kind === 'album') renderSaved('detail-heart', 'detail-heart-icon', item.uri)
+      }
+
+      function loadLiked(offset) {
+        request('library.liked', { offset: offset }).then(function (page) {
+          if (!detail.item || detail.item.kind !== 'collection') return
+          detail.liked = offset ? detail.liked.concat(page.items) : page.items
+          lib.liked = { total: page.total, uri: page.uri }
+          detail.page = { kind: 'collection', name: 'Liked Songs', uri: page.uri, tracks: detail.liked, count: page.total, playable: Boolean(page.uri) }
+          renderDetail()
+        }, failNote('detail-note'))
+      }
+
+      function renderDetail() {
+        var item = detail.item
+        var page = detail.page || {}
+        note('detail-note', '')
+        var art = $('detail-art')
+        art.className = 'thumb' + (item.kind === 'artist' ? ' round' : '') + (item.kind === 'collection' ? ' liked' : '')
+        art.textContent = ''
+        art.style.backgroundImage = ''
+        art.appendChild(icon(ICONS[item.kind] || '#i-music'))
+        var artwork = page.artworkUrl || item.artworkUrl
+        if (artwork) {
+          request('player.artwork', { url: artwork }).then(function (reply) {
+            if (!reply || !reply.dataUrl || detail.item !== item) return
+            art.textContent = ''
+            art.style.backgroundImage = 'url("' + reply.dataUrl + '")'
+          }, function () {})
+        }
+        $('detail-title').textContent = page.name || item.name
+        var count = page.tracks ? songsCount(page.count) : ''
+        var sub = item.kind === 'album' ? ['Album', page.subtitle || item.subtitle, page.year || item.year, count]
+          : item.kind === 'artist' ? ['Artist']
+          : item.kind === 'collection' ? ['Your library', songsCount(page.count)]
+          : ['Playlist', page.subtitle || item.subtitle, songsCount(page.count)]
+        $('detail-sub').textContent = sub.filter(Boolean).join(' · ')
+        $('detail-heart').hidden = item.kind !== 'album'
+        $('detail-open').hidden = !(page.url || item.url)
+        $('detail-play').hidden = !(page.uri || item.uri)
+        var rows = $('detail-rows')
+        rows.textContent = ''
+        var context = page.uri || item.uri
+        if (item.kind === 'artist') {
+          $('detail-list-title').textContent = 'Discography'
+          $('detail-list-title').hidden = !(page.albums && page.albums.length)
+          ;(page.albums || []).forEach(function (album) {
+            var view = { kind: 'album', name: album.name, subtitle: [album.year, 'Album'].filter(Boolean).join(' · '), uri: album.uri, url: album.url, artworkUrl: album.artworkUrl }
+            var built = row({ title: view.name, subtitle: view.subtitle, artworkUrl: view.artworkUrl, url: view.url, icon: '#i-disc', current: playingFrom(view.uri) }, function () { openPage(album, detail.from) })
+            rows.appendChild(built)
+          })
+        } else {
+          $('detail-list-title').hidden = true
+          ;(page.tracks || []).forEach(function (track) {
+            rows.appendChild(row(trackItem(track), function () { play({ contextUri: context, offsetUri: track.uri }) }, enqueueButton(track)))
+          })
+          if (detail.page && page.tracks === null) {
+            note('detail-note', 'Spotify only lists the songs of your own playlists here. Press play to listen to it.')
+          }
+        }
+        $('detail-more').hidden = !(item.kind === 'collection' && page.tracks && page.tracks.length < page.count)
+      }
+
+      // ---------- the heart: saved to your library ----------
+
+      var hearts = {} // uri → saved
+
+      function paintHeart(buttonId, iconId, saved) {
+        $(buttonId).setAttribute('aria-pressed', String(saved))
+        $(iconId).setAttribute('href', saved ? '#i-heart-fill' : '#i-heart')
+        var label = saved ? 'Remove from your library' : 'Save to your library'
+        $(buttonId).setAttribute('aria-label', label)
+        $(buttonId).title = label
+      }
+
+      function renderSaved(buttonId, iconId, uri) {
+        $(buttonId).dataset.uri = uri
+        if (uri in hearts) return paintHeart(buttonId, iconId, hearts[uri])
+        paintHeart(buttonId, iconId, false)
+        request('library.saved', { uris: [uri] }).then(function (reply) {
+          hearts[uri] = Boolean(reply[0])
+          if ($(buttonId).dataset.uri === uri) paintHeart(buttonId, iconId, hearts[uri])
+        }, function () {})
+      }
+
+      // The player's heart: only for songs and episodes, only with the Web API.
+      function renderHeart(track) {
+        var can = isWebApi() && track && /^spotify:(track|episode):/.test(track.uri)
+        $('np-heart').hidden = !can
+        if (can && $('np-heart').dataset.uri !== track.uri) renderSaved('np-heart', 'np-heart-icon', track.uri)
+      }
+
+      function toggleSaved(buttonId, iconId) {
+        var uri = $(buttonId).dataset.uri
+        if (!uri) return
+        var saved = !hearts[uri]
+        hearts[uri] = saved
+        paintHeart(buttonId, iconId, saved)
+        request('library.save', { uri: uri, saved: saved }).then(function () {
+          lib.liked.total = typeof lib.liked.total === 'number' ? lib.liked.total + (saved ? 1 : -1) : lib.liked.total
+        }, function (error) {
+          hearts[uri] = !saved
+          paintHeart(buttonId, iconId, !saved)
+          $(buttonId).title = (error && error.message) || 'Could not save'
+        })
+      }
+
+      // ---------- Search ----------
+
       var search = { q: '', timer: null, seq: 0, sections: {}, filter: 'all' }
+      var FILTER_TYPES = { track: ['track'], album: ['album'], artist: ['artist'], playlist: ['playlist'], podcast: ['show', 'episode'] }
       var SECTIONS = [
         { key: 'tracks', type: 'track', title: 'Songs' },
-        { key: 'albums', type: 'album', title: 'Albums' },
         { key: 'artists', type: 'artist', title: 'Artists' },
-        { key: 'playlists', type: 'playlist', title: 'Playlists' }
+        { key: 'albums', type: 'album', title: 'Albums' },
+        { key: 'playlists', type: 'playlist', title: 'Playlists' },
+        { key: 'shows', type: 'show', title: 'Podcasts' },
+        { key: 'episodes', type: 'episode', title: 'Episodes' }
       ]
+      var RECENT_KEY = 'recentSearches'
+      var recent = { items: null }
+
+      function sectionItem(section, item) {
+        if (section.key === 'tracks' || section.key === 'episodes') {
+          return { kind: section.key === 'tracks' ? 'track' : 'episode', name: item.title, subtitle: item.artist, uri: item.uri, url: item.url, artworkUrl: item.artworkUrl, durationMs: item.durationMs }
+        }
+        return item
+      }
 
       function searchRow(section, item) {
-        if (section.key === 'tracks') {
-          return row(trackItem(item), function () { play({ uris: [item.uri] }) }, enqueueButton(item))
+        if (section.key === 'tracks' || section.key === 'episodes') {
+          return row(trackItem(item), function () {
+            remember(sectionItem(section, item))
+            play({ uris: [item.uri] })
+          }, enqueueButton(item))
         }
-        var artist = section.key === 'artists'
-        var view = { title: item.name, subtitle: item.subtitle, artworkUrl: item.artworkUrl, url: item.url, icon: artist ? '#i-person' : '#i-disc', current: playingFrom(item.uri) }
-        return row(view, function () { play({ contextUri: item.uri }) })
+        return itemRow(item, 'search')
+      }
+
+      // The best match: an exact name among the first of each kind, else the first artist or song.
+      function topResult() {
+        var q = search.q.toLowerCase()
+        var firsts = SECTIONS.map(function (section) {
+          var page = search.sections[section.key]
+          return page && page.items.length ? sectionItem(section, page.items[0]) : null
+        }).filter(Boolean)
+        var exact = firsts.filter(function (item) { return (item.name || '').toLowerCase() === q })[0]
+        return exact || firsts.filter(function (item) { return item.kind === 'artist' })[0] || firsts[0] || null
+      }
+
+      function topResultCard(item) {
+        var button = el('button', 'top-result' + (item.kind === 'artist' ? ' artist' : ''))
+        button.type = 'button'
+        button.appendChild(thumbOf(item))
+        button.appendChild(el('b', '', item.name))
+        var line = el('span', 'pill', KIND_LABELS[item.kind] + (item.subtitle && item.kind !== 'artist' ? ' · ' + item.subtitle : ''))
+        button.appendChild(line)
+        button.addEventListener('click', function () { remember(item); openItem(item, 'search') })
+        var playButton = el('span', 'play-big')
+        playButton.setAttribute('aria-hidden', 'true')
+        playButton.appendChild(icon('#i-play'))
+        button.appendChild(playButton)
+        return button
       }
 
       function renderSearch() {
         var box = $('search-results')
         box.textContent = ''
+        if (search.q.length < 2) return renderRecent()
         var any = false
+        var top = search.filter === 'all' ? topResult() : null
+        if (top) {
+          box.appendChild(el('h3', '', 'Top result'))
+          box.appendChild(topResultCard(top))
+        }
         SECTIONS.forEach(function (section) {
           var page = search.sections[section.key]
           if (!page || !page.items.length) return
           any = true
           box.appendChild(el('h3', '', section.title))
-          page.items.forEach(function (item) { box.appendChild(searchRow(section, item)) })
-          if (page.items.length < page.total) {
+          var items = search.filter === 'all' && section.key === 'tracks' ? page.items.slice(0, 4) : page.items
+          items.forEach(function (item) { box.appendChild(searchRow(section, item)) })
+          if (search.filter !== 'all' && page.items.length < page.total) {
             var more = el('button', 'link more', 'More ' + section.title.toLowerCase())
             more.type = 'button'
             more.addEventListener('click', function () { searchMore(section) })
             box.appendChild(more)
           }
         })
-        if (search.q.length >= 2 && !any && search.done) note('search-note', 'Nothing found for “' + search.q + '”.')
+        if (!any && search.done) note('search-note', 'Nothing found for “' + search.q + '”.')
+      }
+
+      // Recent searches: what the person opened or played from Search, newest first.
+      function loadRecent() {
+        if (recent.items) return Promise.resolve(recent.items)
+        var read = orca.storage && orca.storage.get ? orca.storage.get(RECENT_KEY) : Promise.resolve(null)
+        return Promise.resolve(read).then(function (value) {
+          recent.items = Array.isArray(value) ? value : []
+          return recent.items
+        }, function () {
+          recent.items = []
+          return recent.items
+        })
+      }
+
+      function saveRecent() {
+        if (orca.storage && orca.storage.set) Promise.resolve(orca.storage.set(RECENT_KEY, recent.items)).catch(function () {})
+      }
+
+      function remember(item) {
+        if (tab !== 'search' || !item || !item.uri) return
+        loadRecent().then(function (items) {
+          var kept = { kind: item.kind, name: item.name, subtitle: item.subtitle || '', uri: item.uri, url: item.url || null, artworkUrl: item.artworkUrl || null }
+          recent.items = [kept].concat(items.filter(function (other) { return other.uri !== item.uri })).slice(0, 10)
+          saveRecent()
+        })
+      }
+
+      function renderRecent() {
+        loadRecent().then(function (items) {
+          if (search.q.length >= 2 || tab !== 'search') return
+          var box = $('search-results')
+          box.textContent = ''
+          if (!items.length) return
+          box.appendChild(el('h3', '', 'Recent searches'))
+          items.forEach(function (item) {
+            var view = { title: item.name, subtitle: KIND_LABELS[item.kind] + (item.subtitle && item.kind !== 'artist' ? ' · ' + item.subtitle : ''), artworkUrl: item.artworkUrl, url: item.url, icon: ICONS[item.kind] }
+            var built = row(view, function () { openItem(item, 'search') })
+            if (item.kind === 'artist') built.querySelector('.thumb').classList.add('round')
+            box.appendChild(built)
+          })
+          var clear = el('button', 'link clear-recent', 'Clear recent searches')
+          clear.type = 'button'
+          clear.addEventListener('click', function () {
+            recent.items = []
+            saveRecent()
+            renderRecent()
+          })
+          box.appendChild(clear)
+        })
       }
 
       function runSearch() {
@@ -1307,7 +1864,7 @@
         note('search-note', '')
         var seq = ++search.seq
         if (q.length < 2) return renderSearch()
-        var input = search.filter === 'all' ? { q: q } : { q: q, types: [search.filter] }
+        var input = search.filter === 'all' ? { q: q } : { q: q, types: FILTER_TYPES[search.filter] }
         request('library.search', input).then(function (results) {
           if (seq !== search.seq) return
           search.sections = results
@@ -1328,38 +1885,12 @@
         }, failNote('search-note'))
       }
 
-      var playlists = { items: [], total: 0, loaded: false }
-
-      function playingFrom(uri) {
-        return Boolean(state && state.context && state.context.uri === uri)
-      }
-
       function setFilter(filter) {
         search.filter = filter
         Array.prototype.forEach.call(document.querySelectorAll('[data-filter]'), function (button) {
           button.setAttribute('aria-pressed', String(button.dataset.filter === filter))
         })
         runSearch()
-      }
-
-      function loadPlaylists(offset) {
-        note('playlists-note', '')
-        playlists.loaded = true
-        request('library.playlists', { offset: offset }).then(function (page) {
-          playlists.items = offset ? playlists.items.concat(page.items) : page.items
-          playlists.total = page.total
-          playlists.loaded = true
-          if (state && state.context && !$('v-player').hidden) renderFrom(state)
-          var rows = $('playlist-rows')
-          rows.textContent = ''
-          playlists.items.forEach(function (item) {
-            var count = typeof item.count === 'number' ? item.count + (item.count === 1 ? ' song' : ' songs') : ''
-            var view = { title: item.name, subtitle: ['Playlist', item.subtitle, count].filter(Boolean).join(' · '), artworkUrl: item.artworkUrl, url: item.url, icon: '#i-list', current: playingFrom(item.uri) }
-            rows.appendChild(row(view, function () { play({ contextUri: item.uri }) }))
-          })
-          $('playlists-more').hidden = playlists.items.length >= playlists.total
-          if (!playlists.items.length) note('playlists-note', 'You have no playlists yet.')
-        }, failNote('playlists-note'))
       }
 
       // `start` plays on the device; otherwise it keeps playing or paused as it was.
@@ -1398,10 +1929,15 @@
         tab = next
         if (next === 'player') return state ? render(state) : poll()
         show('v-' + next)
+        window.scrollTo(0, 0)
         if (next === 'queue') loadQueue()
-        if (next === 'playlists') loadPlaylists(0)
+        if (next === 'home') loadHome()
+        if (next === 'playlists') loadLibrary()
         if (next === 'devices') loadDevices()
-        if (next === 'search') $('search-q').focus()
+        if (next === 'search') {
+          renderSearch()
+          $('search-q').focus()
+        }
       }
 
       // ---------- artwork, polling, commands ----------
@@ -1557,7 +2093,25 @@
         $('device-chip').addEventListener('click', function () { setTab('devices') })
         // Web API navigation: the player opens Your Library, the device and the queue; the bottom
         // bar moves between Search and Your Library; sheets go back to the player.
-        $('np-collapse').addEventListener('click', function () { setTab('playlists') })
+        $('np-collapse').addEventListener('click', function () { setTab('home') })
+        $('np-heart').addEventListener('click', function () { toggleSaved('np-heart', 'np-heart-icon') })
+        $('detail-heart').addEventListener('click', function () { toggleSaved('detail-heart', 'detail-heart-icon') })
+        $('detail-back').addEventListener('click', function () { setTab(detail.from || 'home') })
+        $('detail-open').addEventListener('click', function () { openExternal((detail.page && detail.page.url) || detail.item.url) })
+        $('detail-play').addEventListener('click', function () {
+          var uri = (detail.page && detail.page.uri) || detail.item.uri
+          if (uri) play({ contextUri: uri })
+        })
+        $('detail-more').addEventListener('click', function () { loadLiked(detail.liked.length) })
+        Array.prototype.forEach.call(document.querySelectorAll('[data-lib]'), function (button) {
+          button.addEventListener('click', function () { setLibraryFilter(button.dataset.lib) })
+        })
+        Array.prototype.forEach.call(document.querySelectorAll('[data-reconnect]'), function (button) {
+          button.addEventListener('click', function () {
+            reconnecting = true
+            renderSetup()
+          })
+        })
         $('np-device').addEventListener('click', function () { setTab('devices') })
         $('np-queue').addEventListener('click', function () { setTab('queue') })
         $('mini-open').addEventListener('click', function () { setTab('player') })

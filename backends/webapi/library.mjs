@@ -1,5 +1,6 @@
-// Web API reads and writes beyond the player itself: devices, queue, search and playlists,
-// and the mapping from Spotify's objects to the small shapes the panel draws.
+// Web API reads and writes beyond the player itself: devices, queue, search, home, your library
+// and album / artist / playlist pages, and the mapping from Spotify's objects to the small
+// shapes the panel draws. Only endpoints in Spotify's Development Mode set (February 2026).
 import { SEARCH_TYPES } from '../../src/backend.mjs'
 
 // Spotify lists images widest first. The panel shows ~300 px: take the smallest that is at
@@ -37,26 +38,59 @@ export function toDevice(device) {
   }
 }
 
-// An album, artist or playlist row.
-function toItem(item, subtitle) {
-  return { name: item.name, subtitle, uri: item.uri, url: item.external_urls?.spotify ?? null, artworkUrl: pickImage(item.images) }
+// An album, artist, playlist or show row. `kind` says which page it opens.
+function toItem(kind, item, subtitle) {
+  return { kind, name: item.name, subtitle, uri: item.uri, url: item.external_urls?.spotify ?? null, artworkUrl: pickImage(item.images) }
 }
 
-const toAlbum = (album) => toItem(album, (album.artists ?? []).map((artist) => artist.name).join(', '))
-const toArtist = (artist) => toItem(artist, 'Artist')
+const artistNames = (item) => (item.artists ?? []).map((artist) => artist.name).join(', ')
+const yearOf = (item) => (item.release_date ? String(item.release_date).slice(0, 4) : null)
+const toAlbum = (album) => ({ ...toItem('album', album, artistNames(album)), year: yearOf(album) })
+const toArtist = (artist) => toItem('artist', artist, 'Artist')
+const toShow = (show) => toItem('show', show, show.publisher ?? '')
+// Since February 2026 a playlist's songs are under `items` (they were under `tracks`).
+const playlistItems = (playlist) => playlist.items ?? playlist.tracks
 const toPlaylist = (playlist) => ({
-  ...toItem(playlist, playlist.owner?.display_name ?? ''),
-  count: playlist.tracks?.total ?? playlist.items?.total ?? null
+  ...toItem('playlist', playlist, playlist.owner?.display_name ?? ''),
+  count: playlistItems(playlist)?.total ?? null
 })
+
+const idOf = (uri) => String(uri).split(':').pop()
+const LIKED_SONGS = 'Liked Songs'
+const RECENT_LIMIT = 8
 
 export const SEARCH_LIMIT = 10
 export const PLAYLISTS_LIMIT = 50
+export const LIBRARY_LIMIT = 50
 
 // Spotify returns null entries for items it hides (removed playlists); drop them.
 const page = (section, map) =>
   section ? { items: (section.items ?? []).filter(Boolean).map(map), total: section.total ?? 0, offset: section.offset ?? 0 } : undefined
 
 export function createLibrary(client) {
+  // Names and art of the albums, playlists and artists Home shows, read once each.
+  const contexts = new Map()
+  let userId = null
+
+  const me = async () => {
+    userId ??= (await client.request('GET', '/me'))?.id ?? null
+    return userId
+  }
+
+  const contextItem = async ({ type, uri }) => {
+    if (type === 'collection') return { kind: 'collection', name: LIKED_SONGS, subtitle: 'Playlist', uri, url: null, artworkUrl: null }
+    if (!contexts.has(uri)) {
+      const path = { playlist: '/playlists/', album: '/albums/', artist: '/artists/' }[type]
+      if (!path) return null
+      const read = client.request('GET', path + idOf(uri)).then((body) => {
+        if (!body) return null
+        return type === 'playlist' ? toPlaylist(body) : type === 'album' ? toAlbum(body) : toArtist(body)
+      })
+      contexts.set(uri, read.catch(() => (contexts.delete(uri), null)))
+    }
+    return contexts.get(uri)
+  }
+
   return {
     async devices() {
       const body = await client.request('GET', '/me/player/devices')
@@ -76,10 +110,12 @@ export function createLibrary(client) {
       await client.request('POST', '/me/player/queue', { query: { uri } })
     },
 
-    // A context (album, playlist, artist) from an optional position, or a list of track URIs.
-    async playContext({ contextUri, uris, offset } = {}) {
+    // A context (album, playlist, artist, Liked Songs) from an optional position or track, or a
+    // list of track URIs.
+    async playContext({ contextUri, uris, offset, offsetUri } = {}) {
       const body = contextUri ? { context_uri: contextUri } : { uris }
-      if (contextUri && Number.isInteger(offset)) body.offset = { position: offset }
+      if (contextUri && offsetUri) body.offset = { uri: offsetUri }
+      else if (contextUri && Number.isInteger(offset)) body.offset = { position: offset }
       await client.request('PUT', '/me/player/play', { body })
     },
 
@@ -91,7 +127,9 @@ export function createLibrary(client) {
         tracks: page(body?.tracks, toTrack),
         albums: page(body?.albums, toAlbum),
         artists: page(body?.artists, toArtist),
-        playlists: page(body?.playlists, toPlaylist)
+        playlists: page(body?.playlists, toPlaylist),
+        shows: page(body?.shows, toShow),
+        episodes: page(body?.episodes, toTrack)
       }
       return Object.fromEntries(Object.entries(results).filter(([, section]) => section))
     },
@@ -99,6 +137,121 @@ export function createLibrary(client) {
     async playlists(offset = 0) {
       const body = await client.request('GET', '/me/playlists', { query: { limit: PLAYLISTS_LIMIT, offset } })
       return { items: (body?.items ?? []).filter(Boolean).map(toPlaylist), total: body?.total ?? 0, offset }
+    },
+
+    // Home: what you played lately (by album or playlist, newest first), the songs themselves,
+    // and your top artists and songs. Spotify's recommendations are not open to new apps.
+    async home() {
+      const [recent, topArtists, topTracks] = await Promise.all([
+        client.request('GET', '/me/player/recently-played', { query: { limit: 50 } }),
+        client.request('GET', '/me/top/artists', { query: { limit: 10 } }).catch(() => null),
+        client.request('GET', '/me/top/tracks', { query: { limit: 10 } }).catch(() => null)
+      ])
+      const played = (recent?.items ?? []).filter((entry) => entry?.track)
+      const seen = new Set()
+      const sources = []
+      for (const { track, context } of played) {
+        // No context (played from search, say): the track's album stands in.
+        const source = context?.uri ? context : track.album?.uri ? { type: 'album', uri: track.album.uri, album: track.album } : null
+        if (!source || seen.has(source.uri)) continue
+        seen.add(source.uri)
+        sources.push(source)
+        if (sources.length === RECENT_LIMIT) break
+      }
+      const items = await Promise.all(
+        sources.map((source) =>
+          source.album ? { ...toAlbum(source.album), subtitle: artistNames(source.album) || 'Album' } : contextItem(source)
+        )
+      )
+      const tracks = []
+      const trackSeen = new Set()
+      for (const { track } of played) {
+        if (trackSeen.has(track.uri)) continue
+        trackSeen.add(track.uri)
+        tracks.push(toTrack(track))
+      }
+      return {
+        recent: items.filter(Boolean),
+        recentTracks: tracks.slice(0, 10),
+        topArtists: (topArtists?.items ?? []).filter(Boolean).map(toArtist),
+        topTracks: (topTracks?.items ?? []).filter(Boolean).map(toTrack)
+      }
+    },
+
+    // Liked Songs, a page at a time. `uri` plays them as one context.
+    async likedSongs(offset = 0) {
+      const [body, id] = await Promise.all([
+        client.request('GET', '/me/tracks', { query: { limit: LIBRARY_LIMIT, offset } }),
+        me().catch(() => null)
+      ])
+      return {
+        items: (body?.items ?? []).filter((entry) => entry?.track).map((entry) => toTrack(entry.track)),
+        total: body?.total ?? 0,
+        offset,
+        uri: id ? `spotify:user:${id}:collection` : null
+      }
+    },
+
+    async savedAlbums(offset = 0) {
+      const body = await client.request('GET', '/me/albums', { query: { limit: LIBRARY_LIMIT, offset } })
+      return { items: (body?.items ?? []).filter((entry) => entry?.album).map((entry) => toAlbum(entry.album)), total: body?.total ?? 0, offset }
+    },
+
+    // Followed artists page by cursor: pass the `after` the last page returned.
+    async followedArtists(after) {
+      const query = { type: 'artist', limit: LIBRARY_LIMIT }
+      if (after) query.after = after
+      const body = await client.request('GET', '/me/following', { query })
+      const section = body?.artists ?? {}
+      return { items: (section.items ?? []).filter(Boolean).map(toArtist), after: section.next ? (section.cursors?.after ?? null) : null }
+    },
+
+    async savedShows(offset = 0) {
+      const body = await client.request('GET', '/me/shows', { query: { limit: LIBRARY_LIMIT, offset } })
+      return { items: (body?.items ?? []).filter((entry) => entry?.show).map((entry) => toShow(entry.show)), total: body?.total ?? 0, offset }
+    },
+
+    async album(uri) {
+      const body = await client.request('GET', '/albums/' + idOf(uri))
+      const art = body?.images
+      return {
+        ...toAlbum(body),
+        playable: true,
+        count: body?.total_tracks ?? body?.tracks?.total ?? null,
+        // Album tracks come without the album; give each the album's art and name.
+        tracks: (body?.tracks?.items ?? []).filter(Boolean).map((item) => toTrack({ ...item, album: { name: body.name, images: art } }))
+      }
+    },
+
+    async artist(uri) {
+      const [body, albums] = await Promise.all([
+        client.request('GET', '/artists/' + idOf(uri)),
+        client.request('GET', `/artists/${idOf(uri)}/albums`, { query: { include_groups: 'album,single', limit: 20 } })
+      ])
+      return { ...toArtist(body), playable: true, albums: (albums?.items ?? []).filter(Boolean).map(toAlbum) }
+    },
+
+    // Spotify lists a playlist's songs only for your own playlists; others show their header.
+    async playlist(uri) {
+      const body = await client.request('GET', '/playlists/' + idOf(uri))
+      const list = playlistItems(body)
+      const entries = Array.isArray(list?.items) ? list.items : null
+      return {
+        ...toPlaylist(body),
+        playable: true,
+        description: body?.description || null,
+        tracks: entries ? entries.map((entry) => entry?.item ?? entry?.track).filter(Boolean).map(toTrack) : null
+      }
+    },
+
+    // Whether each URI (track, album, episode, show) is in your library.
+    async isSaved(uris) {
+      const body = await client.request('GET', '/me/library/contains', { query: { uris: uris.join(',') } })
+      return Array.isArray(body) ? body.map(Boolean) : uris.map(() => false)
+    },
+
+    async setSaved(uri, saved) {
+      await client.request(saved ? 'PUT' : 'DELETE', '/me/library', { query: { uris: uri } })
     }
   }
 }

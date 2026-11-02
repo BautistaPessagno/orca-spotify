@@ -151,7 +151,7 @@ test('library handlers validate their input before reaching Spotify', async () =
 test('search defaults to every type from the start', async () => {
   const { handlers, calls } = webSetup()
   await handlers['library.search']({ q: 'x' })
-  assert.deepEqual(calls[0], ['search', 'x', ['track', 'album', 'artist', 'playlist'], 0])
+  assert.deepEqual(calls[0], ['search', 'x', ['track', 'album', 'artist', 'playlist', 'show', 'episode'], 0])
 })
 
 test('transfer and play return the player state after they apply', async () => {
@@ -189,4 +189,67 @@ test('devices and queue come from the Web API backend', async () => {
   assert.deepEqual(await handlers['player.devices'](), [{ id: 'd1', name: 'Phone' }])
   assert.deepEqual(await handlers['player.queue'](), { current: null, queue: [] })
   assert.deepEqual(calls, [['devices'], ['queue']])
+})
+
+function librarySetup() {
+  const calls = []
+  const record = (name, result) => async (...args) => (calls.push([name, ...args]), result)
+  const webapi = {
+    id: 'webapi',
+    capabilities: { home: true, library: true, search: true, playlists: true },
+    settle: { tries: 2, stepMs: 400 },
+    getState: async () => ({ status: 'playing' }),
+    command: async () => true,
+    playContext: record('playContext'),
+    home: record('home', { recent: [] }),
+    likedSongs: record('likedSongs', { items: [] }),
+    savedAlbums: record('savedAlbums', { items: [] }),
+    followedArtists: record('followedArtists', { items: [] }),
+    savedShows: record('savedShows', { items: [] }),
+    album: record('album', { kind: 'album' }),
+    artist: record('artist', { kind: 'artist' }),
+    playlist: record('playlist', { kind: 'playlist' }),
+    isSaved: record('isSaved', [true]),
+    setSaved: record('setSaved')
+  }
+  const settings = { get: async () => 'webapi', set: async () => {} }
+  const spotify = createBackendSelector({ backends: { webapi, applescript: { id: 'applescript', capabilities: {} } }, settings, platform: 'linux' })
+  return { calls, handlers: createPanelHandlers(spotify, { platform: 'linux', delay: async () => {} }) }
+}
+
+test('home and library handlers page through what the backend reads', async () => {
+  const { calls, handlers } = librarySetup()
+  await handlers['library.home']()
+  await handlers['library.liked']({ offset: 50 })
+  await handlers['library.albums']({})
+  await handlers['library.artists']({ after: 'abc' })
+  await handlers['library.shows']({ offset: 0 })
+  assert.deepEqual(calls, [['home'], ['likedSongs', 50], ['savedAlbums', 0], ['followedArtists', 'abc'], ['savedShows', 0]])
+  await assert.rejects(handlers['library.artists']({ after: 'not a cursor!' }), /cursor/)
+})
+
+test('a page opens by the kind of URI it is given', async () => {
+  const { calls, handlers } = librarySetup()
+  assert.equal((await handlers['library.page']({ uri: 'spotify:album:a1' })).kind, 'album')
+  assert.equal((await handlers['library.page']({ uri: 'spotify:artist:b2' })).kind, 'artist')
+  assert.equal((await handlers['library.page']({ uri: 'spotify:playlist:c3' })).kind, 'playlist')
+  assert.deepEqual(calls.map((c) => c[0]), ['album', 'artist', 'playlist'])
+  await assert.rejects(handlers['library.page']({ uri: 'spotify:track:x' }), /album, artist or playlist/)
+})
+
+test('saving: check up to 20 at once, and save or remove one', async () => {
+  const { calls, handlers } = librarySetup()
+  assert.deepEqual(await handlers['library.saved']({ uris: ['spotify:track:a'] }), [true])
+  assert.deepEqual(await handlers['library.save']({ uri: 'spotify:album:b', saved: false }), { saved: false })
+  assert.deepEqual(calls, [['isSaved', ['spotify:track:a']], ['setSaved', 'spotify:album:b', false]])
+  await assert.rejects(handlers['library.saved']({ uris: Array(21).fill('spotify:track:a') }), /20/)
+  await assert.rejects(handlers['library.save']({ uri: 'spotify:artist:x', saved: true }), /track, album, episode or show/)
+  await assert.rejects(handlers['library.save']({ uri: 'spotify:track:x' }), /saved/)
+})
+
+test('Liked Songs plays as a context, from a chosen track', async () => {
+  const { calls, handlers } = librarySetup()
+  await handlers['player.playContext']({ contextUri: 'spotify:user:bau.pessa:collection', offsetUri: 'spotify:track:t1' })
+  assert.deepEqual(calls[0], ['playContext', { contextUri: 'spotify:user:bau.pessa:collection', offsetUri: 'spotify:track:t1' }])
+  await assert.rejects(handlers['player.playContext']({ contextUri: 'spotify:user:x/../y:collection' }), /album, playlist or artist|Spotify URI/)
 })

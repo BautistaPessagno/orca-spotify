@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { test } from 'node:test'
-import { createAuth, listenLoopback } from '../backends/webapi/auth.mjs'
+import { SCOPES, createAuth, listenLoopback } from '../backends/webapi/auth.mjs'
 import { fakeSecrets, fakeSettings } from './fakes.mjs'
 
 const CLIENT_ID = '0123456789abcdef0123456789abcdef'
@@ -199,4 +199,22 @@ test('a redirect port outside 1024–65535 falls back to 43117', async () => {
   assert.deepEqual(ports, [43117])
   assert.equal(redirect, 'http://127.0.0.1:43117/callback')
   assert.equal((await auth.connection()).redirectUri, redirect)
+})
+
+test('a login from before Home and the library existed is flagged for a reconnect', async () => {
+  const old = fakeSecrets({ 'spotify.tokens': storedTokens({ scopes: 'user-read-playback-state user-modify-playback-state' }) })
+  const missing = (await setup({ secrets: old }).auth.connection()).missingScopes
+  assert.ok(missing.includes('user-library-read'))
+  assert.ok(missing.includes('user-read-recently-played'))
+  const full = fakeSecrets({ 'spotify.tokens': storedTokens({ scopes: SCOPES.join(' ') }) })
+  assert.deepEqual((await setup({ secrets: full }).auth.connection()).missingScopes, [])
+})
+
+test('the login asks for what Home, the library and the heart need', async (t) => {
+  const { auth } = setup()
+  t.after(() => auth.close())
+  const scope = new URL((await auth.start()).url).searchParams.get('scope').split(' ')
+  for (const needed of ['user-read-recently-played', 'user-top-read', 'user-library-read', 'user-library-modify', 'user-follow-read']) {
+    assert.ok(scope.includes(needed), needed)
+  }
 })

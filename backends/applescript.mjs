@@ -64,6 +64,7 @@ export const CAPABILITIES = Object.freeze({
   search: false,
   playlists: false,
   library: false,
+  home: false,
   needsAuth: false,
   poll: { playing: 1000, paused: 1000, hidden: 4000 }
 })

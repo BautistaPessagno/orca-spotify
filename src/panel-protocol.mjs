@@ -16,6 +16,14 @@
 //   player.playContext  { contextUri?, uris?, offset? } → state
 //   library.search      { q, types?, offset? } → { tracks?, albums?, artists?, playlists? }, 10 per type
 //   library.playlists   { offset? }           → { items, total, offset }, 50 per page
+//   library.home                              → { recent, recentTracks, topArtists, topTracks }
+//   library.liked       { offset? }           → { items: Track[], total, offset, uri }
+//   library.albums      { offset? }           → { items, total, offset }
+//   library.artists     { after? }            → { items, after }
+//   library.shows       { offset? }           → { items, total, offset }
+//   library.page        { uri }               → an album, artist or playlist page
+//   library.saved       { uris }              → boolean[] (up to 20)
+//   library.save        { uri, saved }        → { saved }
 //
 // player.devices through library.playlists need a backend with that capability (the Web API);
 // on AppleScript they reject.
@@ -30,9 +38,15 @@ const ARTWORK_HOSTS = [/^https:\/\/i\.scdn\.co\//, /^https:\/\/mosaic\.scdn\.co\
 const ARTWORK_MAX_BYTES = 96 * 1024
 const ARTWORK_CACHE = 64
 
-const URI = /^spotify:(track|album|playlist|artist|episode):[A-Za-z0-9]+$/
+const URI = /^spotify:(track|album|playlist|artist|episode|show):[A-Za-z0-9]+$/
+// Liked Songs as a context: spotify:user:<user id>:collection.
+const LIKED = /^spotify:user:[A-Za-z0-9._-]{1,64}:collection$/
+const CURSOR = /^[A-Za-z0-9_-]{1,64}$/
 const CONTEXT_KINDS = ['album', 'playlist', 'artist']
 const ITEM_KINDS = ['track', 'episode']
+const PAGE_KINDS = ['album', 'artist', 'playlist']
+const SAVE_KINDS = ['track', 'album', 'episode', 'show']
+const MAX_SAVED_CHECK = 20
 const MAX_URIS = 100
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -172,8 +186,9 @@ export function createPanelHandlers(spotify, { fetchImpl = globalThis.fetch, aut
       const { contextUri, uris, offset } = input ?? {}
       let request
       if (contextUri !== undefined) {
-        request = { contextUri: spotifyUri(contextUri, CONTEXT_KINDS) }
-        if (offset !== undefined) request.offset = offsetOf(offset, 10_000)
+        request = { contextUri: typeof contextUri === 'string' && LIKED.test(contextUri) ? contextUri : spotifyUri(contextUri, CONTEXT_KINDS) }
+        if (input.offsetUri !== undefined) request.offsetUri = spotifyUri(input.offsetUri, ITEM_KINDS)
+        else if (offset !== undefined) request.offset = offsetOf(offset, 10_000)
       } else {
         if (!Array.isArray(uris) || uris.length === 0 || uris.length > MAX_URIS) throw bad(`Send 1 to ${MAX_URIS} track URIs.`)
         request = { uris: uris.map((uri) => spotifyUri(uri, ITEM_KINDS)) }
@@ -194,6 +209,39 @@ export function createPanelHandlers(spotify, { fetchImpl = globalThis.fetch, aut
       return (await needs('search')).search(q, [...new Set(types)], offset)
     },
 
-    'library.playlists': async (input) => (await needs('playlists')).playlists(offsetOf(input?.offset, 10_000))
+    'library.playlists': async (input) => (await needs('playlists')).playlists(offsetOf(input?.offset, 10_000)),
+
+    'library.home': async () => (await needs('home')).home(),
+
+    'library.liked': async (input) => (await needs('library')).likedSongs(offsetOf(input?.offset, 10_000)),
+
+    'library.albums': async (input) => (await needs('library')).savedAlbums(offsetOf(input?.offset, 10_000)),
+
+    'library.artists': async (input) => {
+      const after = input?.after
+      if (after !== undefined && after !== null && !(typeof after === 'string' && CURSOR.test(after))) throw bad('That is not a page cursor.')
+      return (await needs('library')).followedArtists(after ?? undefined)
+    },
+
+    'library.shows': async (input) => (await needs('library')).savedShows(offsetOf(input?.offset, 10_000)),
+
+    'library.page': async (input) => {
+      const uri = spotifyUri(input?.uri, PAGE_KINDS)
+      const backend = await needs('library')
+      return backend[uri.split(':')[1]](uri)
+    },
+
+    'library.saved': async (input) => {
+      const uris = input?.uris
+      if (!Array.isArray(uris) || uris.length === 0 || uris.length > MAX_SAVED_CHECK) throw bad(`Check 1 to ${MAX_SAVED_CHECK} URIs at a time.`)
+      return (await needs('library')).isSaved(uris.map((uri) => spotifyUri(uri, SAVE_KINDS)))
+    },
+
+    'library.save': async (input) => {
+      const uri = spotifyUri(input?.uri, SAVE_KINDS)
+      if (typeof input.saved !== 'boolean') throw bad('Say whether it should be saved.')
+      await (await needs('library')).setSaved(uri, input.saved)
+      return { saved: input.saved }
+    }
   }
 }

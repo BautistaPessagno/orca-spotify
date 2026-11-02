@@ -33,8 +33,16 @@ test('answers the player panel requests', () => {
     'auth.status',
     'backend.info',
     'backend.select',
+    'library.albums',
+    'library.artists',
+    'library.home',
+    'library.liked',
+    'library.page',
     'library.playlists',
+    'library.save',
+    'library.saved',
     'library.search',
+    'library.shows',
     'player.artwork',
     'player.command',
     'player.devices',
@@ -51,7 +59,7 @@ test('declares the player panel', () => {
 })
 
 test('declares the settings and capabilities the Web API backend needs', () => {
-  assert.deepEqual(manifest.capabilities.map((c) => c.kind).sort(), ['secrets:own', 'settings:own'])
+  assert.deepEqual(manifest.capabilities.map((c) => c.kind).sort(), ['secrets:own', 'settings:own', 'storage:own'])
   const settings = Object.fromEntries(manifest.contributes.settings.map((s) => [s.key, s]))
   assert.deepEqual(settings.backend.enum, ['auto', 'applescript', 'webapi'])
   assert.equal(settings.backend.default, 'auto')

@@ -15,7 +15,13 @@ export const SCOPES = Object.freeze([
   'user-read-playback-state',
   'user-modify-playback-state',
   'user-read-currently-playing',
-  'playlist-read-private'
+  'playlist-read-private',
+  // Home, Your Library and the heart.
+  'user-read-recently-played',
+  'user-top-read',
+  'user-library-read',
+  'user-library-modify',
+  'user-follow-read'
 ])
 export const DEFAULT_PORT = 43117
 export const TOKENS_KEY = 'spotify.tokens'
@@ -259,6 +265,8 @@ export function createAuth({
         connected,
         authorizedAt: connected ? tokens.authorized_at : null,
         expiresSoon: connected && endsSoon(tokens),
+        // A login from an older version lacks the permissions newer features need.
+        missingScopes: connected && typeof tokens.scopes === 'string' ? SCOPES.filter((scope) => !tokens.scopes.split(' ').includes(scope)) : [],
         protection: memoryOnly ? 'unavailable' : await Promise.resolve(protection()).catch(() => 'unavailable'),
         redirectUri: `http://127.0.0.1:${await port()}/callback`
       }

@@ -233,7 +233,7 @@ test('search asks for 10 per type and keeps only real items', async () => {
   assert.deepEqual(api.requests[0].query, { q: 'lofi', type: 'track,album,playlist', limit: '10', offset: '10' })
   assert.equal(results.tracks.items[0].title, 'Song 1')
   assert.equal(results.tracks.total, 31)
-  assert.deepEqual(results.albums.items[0], { name: 'LP', subtitle: 'X', uri: 'spotify:album:a', url: 'u', artworkUrl: 'https://i.scdn.co/image/300' })
+  assert.deepEqual(results.albums.items[0], { kind: 'album', name: 'LP', subtitle: 'X', uri: 'spotify:album:a', url: 'u', artworkUrl: 'https://i.scdn.co/image/300', year: null })
   assert.deepEqual(results.playlists.items.map((p) => p.name), ['Mix'])
   assert.equal(results.playlists.items[0].artworkUrl, null)
 })
@@ -248,7 +248,7 @@ test('your playlists, 50 per page', async () => {
   const page = await backend.playlists(50)
   assert.deepEqual(api.requests[0].query, { limit: '50', offset: '50' })
   assert.deepEqual(page, {
-    items: [{ name: 'Mine', subtitle: 'Me', uri: 'spotify:playlist:m', url: 'u', artworkUrl: 'https://i.scdn.co/image/300', count: 12 }],
+    items: [{ kind: 'playlist', name: 'Mine', subtitle: 'Me', uri: 'spotify:playlist:m', url: 'u', artworkUrl: 'https://i.scdn.co/image/300', count: 12 }],
     total: 60,
     offset: 50
   })
