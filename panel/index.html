@@ -617,6 +617,38 @@
       .web .row .thumb.round { border-radius: 50%; background-size: cover; }
       .row-num { flex: none; width: 20px; text-align: right; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
       .clear-recent { justify-self: center; }
+      .library-tools { display: flex; align-items: center; gap: 8px; }
+      .library-tools input {
+        flex: 1;
+        min-width: 0;
+        height: 36px;
+        padding: 0 10px;
+        border: 0;
+        border-radius: 6px;
+        background: #2a2a2a;
+        color: #ffffff;
+        font: inherit;
+        font-size: 13px;
+        outline: none;
+        user-select: text;
+      }
+      .library-tools input::placeholder { color: #b3b3b3; }
+      .library-tools input:focus { box-shadow: 0 0 0 2px #ffffff; }
+      .sort-btn {
+        flex: none;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0 6px;
+        border: 0;
+        background: transparent;
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .sort-btn svg { width: 14px; height: 14px; }
+      .sort-btn:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
 
       .web .setup { padding: 24px 20px 12px; }
       .web .setup h2 { font-size: 24px; font-weight: 800; }
@@ -661,6 +693,7 @@
       <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5" /><path d="M5 9v11h5v-6h4v6h5V9" /></symbol>
       <symbol id="i-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 11a7 7 0 0 0 14 0" /><path d="M12 18v4" /></symbol>
       <symbol id="i-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6" /></symbol>
+      <symbol id="i-sort" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16" /><path d="m3 16 4 4 4-4" /><path d="M17 20V4" /><path d="m13 8 4-4 4 4" /></symbol>
       <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></symbol>
       <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8" /><path d="M21 3v5h-5" /></symbol>
       <!-- Placeholder for the Spotify icon. Replace it with the official icon from Spotify's
@@ -837,6 +870,10 @@
         <button type="button" class="chip-btn" data-lib="albums" aria-pressed="false">Albums</button>
         <button type="button" class="chip-btn" data-lib="artists" aria-pressed="false">Artists</button>
         <button type="button" class="chip-btn" data-lib="shows" aria-pressed="false">Podcasts</button>
+      </div>
+      <div class="library-tools web-only">
+        <input type="search" id="library-q" placeholder="Search in Your Library" aria-label="Search in Your Library" autocomplete="off" spellcheck="false" />
+        <button type="button" class="sort-btn" id="library-sort" aria-label="Sort: Recents" title="Change the order"><svg><use href="#i-sort" /></svg><span id="library-sort-label">Recents</span></button>
       </div>
       <div class="rows" id="playlist-rows"></div>
       <button type="button" class="link more" id="playlists-more" hidden>Show more</button>
@@ -1019,7 +1056,7 @@
       // "Playing from playlist · Focus". The name comes from a list the panel already read.
       function contextName(context) {
         if (context.type === 'collection') return 'Liked Songs'
-        var lists = [playlists.items, lib.albums.items, lib.artists.items, home.data ? home.data.recent : []]
+        var lists = [playlists.items, lib.spotify, lib.albums.items, lib.artists.items, home.data ? home.data.recent : []]
         ;['albums', 'artists', 'playlists'].forEach(function (key) {
           if (search.sections[key]) lists.push(search.sections[key].items)
         })
@@ -1094,6 +1131,7 @@
         }
         state = next
         stateAt = Date.now()
+        if (next.backend === 'webapi' && next.status === 'playing') noteContext(next.context)
         if ((setupWanted && !isWebApi()) || reconnecting) return renderSetup()
         switch (next.status) {
           case 'needs-setup':
@@ -1535,21 +1573,116 @@
       var lib = {
         filter: null,
         loaded: false,
+        q: '',
+        sort: 'recents',
         liked: { total: null, uri: null },
         albums: { items: [] },
         artists: { items: [] },
-        shows: { items: [] }
+        shows: { items: [] },
+        // Playlists Spotify makes (This Is, Daily Mix): Spotify leaves them out of the playlists it
+        // gives apps, so the panel keeps the ones you play or add by link, in its own storage.
+        spotify: [],
+        lastPlayed: {}, // uri → when this panel last saw it play
+        recentPlayed: {}, // uri → when Spotify says it last played (recently played, last 50 songs)
+        pending: {}
       }
       var playlists = { items: [], total: 0, loaded: false }
+      var SORTS = [
+        { id: 'recents', label: 'Recents' },
+        { id: 'added', label: 'Recently added' },
+        { id: 'alpha', label: 'Alphabetical' },
+        { id: 'creator', label: 'Creator' }
+      ]
+      var STORE = { spotify: 'spotifyPlaylists', lastPlayed: 'lastPlayed', sort: 'librarySort' }
 
-      function loadPlaylists(offset) {
+      function storeGet(key) {
+        if (!orca.storage || !orca.storage.get) return Promise.resolve(null)
+        return Promise.resolve(orca.storage.get(key)).catch(function () { return null })
+      }
+
+      function storeSet(key, value) {
+        if (orca.storage && orca.storage.set) Promise.resolve(orca.storage.set(key, value)).catch(function () {})
+      }
+
+      var stored = Promise.all([storeGet(STORE.spotify), storeGet(STORE.lastPlayed), storeGet(STORE.sort)]).then(function (values) {
+        if (Array.isArray(values[0])) lib.spotify = values[0]
+        if (values[1] && typeof values[1] === 'object') lib.lastPlayed = values[1]
+        if (SORTS.some(function (sort) { return sort.id === values[2] })) lib.sort = values[2]
+        renderSortLabel()
+      })
+
+      // Reads every page of a list, up to `max` items.
+      function readAll(name, max) {
+        var items = []
+        var next = function (offset) {
+          return request(name, { offset: offset }).then(function (page) {
+            items = items.concat(page.items)
+            if (page.items.length && items.length < page.total && items.length < max) return next(items.length)
+            return { items: items, total: page.total }
+          })
+        }
+        return next(0)
+      }
+
+      function readArtists() {
+        var items = []
+        var next = function (after) {
+          return request('library.artists', after ? { after: after } : {}).then(function (page) {
+            items = items.concat(page.items)
+            if (page.after && items.length < 1000) return next(page.after)
+            return { items: items }
+          })
+        }
+        return next(null)
+      }
+
+      function loadPlaylists() {
         playlists.loaded = true
-        return request('library.playlists', { offset: offset }).then(function (page) {
-          playlists.items = offset ? playlists.items.concat(page.items) : page.items
+        return readAll('library.playlists', 1000).then(function (page) {
+          playlists.items = page.items
           playlists.total = page.total
           if (state && state.context && !$('v-player').hidden) renderFrom(state)
           if (tab === 'playlists') renderLibrary()
         }, failNote('playlists-note'))
+      }
+
+      function rememberSpotifyPlaylist(item) {
+        if (!item || !item.name || lib.spotify.some(function (other) { return other.uri === item.uri })) return
+        lib.spotify = [{ kind: 'playlist', name: item.name, subtitle: 'Spotify', uri: item.uri, url: item.url, artworkUrl: item.artworkUrl, count: null, closed: true, addedAt: Date.now() }].concat(lib.spotify)
+        storeSet(STORE.spotify, lib.spotify)
+        if (tab === 'playlists') renderLibrary()
+      }
+
+      function forgetSpotifyPlaylist(uri) {
+        lib.spotify = lib.spotify.filter(function (item) { return item.uri !== uri })
+        storeSet(STORE.spotify, lib.spotify)
+        if (tab === 'playlists') renderLibrary()
+      }
+
+      function isRemembered(uri) {
+        return lib.spotify.some(function (item) { return item.uri === uri })
+      }
+
+      // Each read of the player: note when its album or playlist played, and keep a Spotify-made
+      // playlist the first time it plays.
+      var lastPlayedSave = null
+      function noteContext(context) {
+        if (!context || !context.uri) return
+        lib.lastPlayed[context.uri] = Date.now()
+        clearTimeout(lastPlayedSave)
+        lastPlayedSave = setTimeout(function () {
+          var entries = Object.keys(lib.lastPlayed).map(function (uri) { return [uri, lib.lastPlayed[uri]] })
+          entries.sort(function (a, b) { return b[1] - a[1] })
+          lib.lastPlayed = {}
+          entries.slice(0, 300).forEach(function (entry) { lib.lastPlayed[entry[0]] = entry[1] })
+          storeSet(STORE.lastPlayed, lib.lastPlayed)
+        }, 2000)
+        if (context.type !== 'playlist' || lib.pending[context.uri] || isRemembered(context.uri)) return
+        if (!playlists.loaded || playlists.items.some(function (item) { return item.uri === context.uri })) return
+        lib.pending[context.uri] = true
+        request('library.page', { uri: context.uri }).then(function (page) {
+          if (page.closed) rememberSpotifyPlaylist(page)
+        }, function () {})
       }
 
       function loadLibrary() {
@@ -1557,7 +1690,7 @@
         note('playlists-note', '')
         if (lib.loaded) return
         lib.loaded = true
-        loadPlaylists(0)
+        loadPlaylists()
         var keep = function (key) {
           return function (page) {
             lib[key] = page
@@ -1568,9 +1701,20 @@
           lib.liked = { total: page.total, uri: page.uri }
           if (tab === 'playlists') renderLibrary()
         }, function () {})
-        request('library.albums', { offset: 0 }).then(keep('albums'), function () {})
-        request('library.artists', {}).then(keep('artists'), function () {})
-        request('library.shows', { offset: 0 }).then(keep('shows'), function () {})
+        readAll('library.albums', 1000).then(keep('albums'), function () {})
+        readArtists().then(keep('artists'), function () {})
+        readAll('library.shows', 500).then(keep('shows'), function () {})
+        // What played lately, from Spotify: sorts Recents and finds Spotify-made playlists.
+        var homeRead = home.data ? Promise.resolve(home.data) : request('library.home').then(function (data) {
+          home.data = data
+          home.at = Date.now()
+          return data
+        })
+        homeRead.then(function (data) {
+          ;(data.recentContexts || []).forEach(function (entry) { lib.recentPlayed[entry.uri] = entry.playedAt || 0 })
+          ;(data.recent || []).forEach(function (item) { if (item.closed) rememberSpotifyPlaylist(item) })
+          if (tab === 'playlists') renderLibrary()
+        }, function () {})
       }
 
       function setLibraryFilter(filter) {
@@ -1581,21 +1725,102 @@
         renderLibrary()
       }
 
-      // Liked Songs first, then playlists, albums, artists and podcasts, or one kind by its chip.
+      function renderSortLabel() {
+        var sort = SORTS.filter(function (one) { return one.id === lib.sort })[0]
+        $('library-sort-label').textContent = sort.label
+        $('library-sort').setAttribute('aria-label', 'Sort: ' + sort.label)
+      }
+
+      function nextSort() {
+        var index = SORTS.map(function (one) { return one.id }).indexOf(lib.sort)
+        lib.sort = SORTS[(index + 1) % SORTS.length].id
+        storeSet(STORE.sort, lib.sort)
+        renderSortLabel()
+        renderLibrary()
+      }
+
+      // Lower case without accents, so "cerati" finds "Cerati" and "canción" finds "cancion".
+      function fold(text) {
+        return String(text || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+      }
+
+      function playedAt(item) {
+        return Math.max(lib.lastPlayed[item.uri] || 0, lib.recentPlayed[item.uri] || 0)
+      }
+
+      function byName(a, b) {
+        return fold(a.name).localeCompare(fold(b.name))
+      }
+
+      // Spotify's orders. Items without the date an order needs keep their place, after the rest.
+      function sorted(items) {
+        var withIndex = items.map(function (item, index) { return { item: item, index: index } })
+        var keyed = function (key) {
+          withIndex.sort(function (a, b) {
+            var ka = key(a.item)
+            var kb = key(b.item)
+            if (ka !== kb) return kb - ka
+            return a.index - b.index
+          })
+        }
+        if (lib.sort === 'recents') keyed(playedAt)
+        if (lib.sort === 'added') keyed(function (item) { return item.addedAt || 0 })
+        if (lib.sort === 'alpha') withIndex.sort(function (a, b) { return byName(a.item, b.item) })
+        if (lib.sort === 'creator') {
+          withIndex.sort(function (a, b) {
+            return fold(a.item.subtitle).localeCompare(fold(b.item.subtitle)) || byName(a.item, b.item)
+          })
+        }
+        return withIndex.map(function (entry) { return entry.item })
+      }
+
+      var LINK = /(?:open\.spotify\.com\/(?:intl-[a-z-]+\/)?playlist\/|spotify:playlist:)([A-Za-z0-9]{10,40})/
+
+      // A pasted playlist link: a row to add it to Your Library.
+      function addByLinkRow(id) {
+        var uri = 'spotify:playlist:' + id
+        var known = playlists.items.concat(lib.spotify).filter(function (item) { return item.uri === uri })[0]
+        if (known) return itemRow(known, 'playlists')
+        var view = { title: 'Add this playlist to Your Library', subtitle: 'From the link you pasted', icon: '#i-plus' }
+        return row(view, function () {
+          note('playlists-note', 'Adding…')
+          request('library.page', { uri: uri }).then(function (page) {
+            if (!page.name) return note('playlists-note', 'Spotify doesn’t know that playlist.')
+            rememberSpotifyPlaylist({ name: page.name, uri: uri, url: page.url, artworkUrl: page.artworkUrl })
+            $('library-q').value = ''
+            lib.q = ''
+            note('playlists-note', '')
+            renderLibrary()
+          }, failNote('playlists-note'))
+        })
+      }
+
+      // Liked Songs pinned first, then everything in the chosen order; a chip keeps one kind.
       function renderLibrary() {
         $('library-scopes').hidden = !missingScopes()
         var rows = $('playlist-rows')
         rows.textContent = ''
         var f = lib.filter
+        var link = LINK.exec(lib.q)
+        if (link) return rows.appendChild(addByLinkRow(link[1]))
         var items = []
-        if ((!f || f === 'playlists') && lib.liked.uri) items.push(likedItem())
-        if (!f || f === 'playlists') items = items.concat(playlists.items)
+        if (!f || f === 'playlists') items = items.concat(playlists.items, lib.spotify)
         if (!f || f === 'albums') items = items.concat(lib.albums.items)
         if (!f || f === 'artists') items = items.concat(lib.artists.items)
         if (!f || f === 'shows') items = items.concat(lib.shows.items)
-        items.forEach(function (item) { rows.appendChild(itemRow(item, 'playlists')) })
-        $('playlists-more').hidden = f !== 'playlists' || playlists.items.length >= playlists.total
-        if (lib.loaded && !items.length && playlists.loaded) note('playlists-note', f ? 'Nothing here yet.' : 'Your library is empty.')
+        var q = fold(lib.q)
+        var liked = (!f || f === 'playlists') && lib.liked.uri ? [likedItem()] : []
+        if (q) {
+          var match = function (item) { return fold(item.name).indexOf(q) !== -1 || fold(item.subtitle).indexOf(q) !== -1 }
+          items = items.filter(match)
+          liked = liked.filter(match)
+        }
+        liked.concat(sorted(items)).forEach(function (item) { rows.appendChild(itemRow(item, 'playlists')) })
+        $('playlists-more').hidden = true
+        var empty = !items.length && !liked.length
+        if (q && empty) note('playlists-note', 'Nothing in Your Library matches “' + lib.q + '”.')
+        else if (lib.loaded && playlists.loaded && empty) note('playlists-note', f ? 'Nothing here yet.' : 'Your library is empty.')
+        else note('playlists-note', '')
       }
 
       // ---------- album, artist, playlist and Liked Songs pages ----------
@@ -1615,6 +1840,7 @@
           renderDetail()
         }, failNote('detail-note'))
         if (item.kind === 'album') renderSaved('detail-heart', 'detail-heart-icon', item.uri)
+        if (item.kind === 'playlist') paintHeart('detail-heart', 'detail-heart-icon', isRemembered(item.uri))
       }
 
       function loadLiked(offset) {
@@ -1651,7 +1877,11 @@
           : item.kind === 'collection' ? ['Your library', songsCount(page.count)]
           : ['Playlist', page.subtitle || item.subtitle, songsCount(typeof page.count === 'number' ? page.count : item.count)]
         $('detail-sub').textContent = sub.filter(Boolean).join(' · ')
-        $('detail-heart').hidden = item.kind !== 'album'
+        // Albums: the heart saves to your Spotify library. Spotify-made playlists: it keeps them in
+        // this panel's Your Library (Spotify no longer lets apps follow playlists).
+        var keepable = item.kind === 'playlist' && (page.closed || isRemembered(item.uri))
+        $('detail-heart').hidden = !(item.kind === 'album' || keepable)
+        if (keepable) paintHeart('detail-heart', 'detail-heart-icon', isRemembered(item.uri))
         $('detail-open').hidden = !(page.url || item.url)
         $('detail-play').hidden = !(page.uri || item.uri)
         var rows = $('detail-rows')
@@ -2097,7 +2327,19 @@
         // bar moves between Search and Your Library; sheets go back to the player.
         $('np-collapse').addEventListener('click', function () { setTab('home') })
         $('np-heart').addEventListener('click', function () { toggleSaved('np-heart', 'np-heart-icon') })
-        $('detail-heart').addEventListener('click', function () { toggleSaved('detail-heart', 'detail-heart-icon') })
+        $('detail-heart').addEventListener('click', function () {
+          var item = detail.item
+          if (item.kind === 'album') return toggleSaved('detail-heart', 'detail-heart-icon')
+          var page = detail.page || {}
+          if (isRemembered(item.uri)) forgetSpotifyPlaylist(item.uri)
+          else rememberSpotifyPlaylist({ name: page.name || item.name, uri: item.uri, url: page.url || item.url, artworkUrl: page.artworkUrl || item.artworkUrl })
+          paintHeart('detail-heart', 'detail-heart-icon', isRemembered(item.uri))
+        })
+        $('library-q').addEventListener('input', function () {
+          lib.q = $('library-q').value.trim()
+          renderLibrary()
+        })
+        $('library-sort').addEventListener('click', nextSort)
         $('detail-back').addEventListener('click', function () { setTab(detail.from || 'home') })
         $('detail-open').addEventListener('click', function () { openExternal((detail.page && detail.page.url) || detail.item.url) })
         $('detail-play').addEventListener('click', function () {

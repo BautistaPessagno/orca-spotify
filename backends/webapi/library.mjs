@@ -67,10 +67,33 @@ export const LIBRARY_LIMIT = 50
 const page = (section, map) =>
   section ? { items: (section.items ?? []).filter(Boolean).map(map), total: section.total ?? 0, offset: section.offset ?? 0 } : undefined
 
-export function createLibrary(client) {
+const OEMBED = 'https://open.spotify.com/oembed'
+
+export function createLibrary(client, { fetchImpl = globalThis.fetch } = {}) {
   // Names and art of the albums, playlists and artists Home shows, read once each.
   const contexts = new Map()
+  const previews = new Map()
   let userId = null
+
+  // Spotify keeps the playlists it makes (This Is, Daily Mix) from new apps' Web API calls, but
+  // its public link preview (oEmbed, no login) still names them and gives their cover.
+  const preview = (url) => {
+    if (!previews.has(url)) {
+      const read = fetchImpl(`${OEMBED}?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(5000) })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((body) => (body?.title ? { name: body.title, artworkUrl: body.thumbnail_url ?? null } : null))
+        .catch(() => null)
+      previews.set(url, read)
+      read.then((value) => value || previews.delete(url))
+    }
+    return previews.get(url)
+  }
+
+  const closedPlaylist = async (uri) => {
+    const url = `https://open.spotify.com/playlist/${idOf(uri)}`
+    const known = await preview(url)
+    return { kind: 'playlist', name: known?.name ?? null, subtitle: 'Spotify', uri, url, artworkUrl: known?.artworkUrl ?? null, count: null, closed: true }
+  }
 
   const me = async () => {
     userId ??= (await client.request('GET', '/me'))?.id ?? null
@@ -82,10 +105,16 @@ export function createLibrary(client) {
     if (!contexts.has(uri)) {
       const path = { playlist: '/playlists/', album: '/albums/', artist: '/artists/' }[type]
       if (!path) return null
-      const read = client.request('GET', path + idOf(uri)).then((body) => {
-        if (!body) return null
-        return type === 'playlist' ? toPlaylist(body) : type === 'album' ? toAlbum(body) : toArtist(body)
-      })
+      const read = client.request('GET', path + idOf(uri)).then(
+        (body) => {
+          if (!body) return null
+          return type === 'playlist' ? toPlaylist(body) : type === 'album' ? toAlbum(body) : toArtist(body)
+        },
+        (error) => {
+          if (type === 'playlist' && error?.kind === 'not-found') return closedPlaylist(uri).then((item) => (item.name ? item : null))
+          throw error
+        }
+      )
       contexts.set(uri, read.catch(() => (contexts.delete(uri), null)))
     }
     return contexts.get(uri)
@@ -150,13 +179,15 @@ export function createLibrary(client) {
       const played = (recent?.items ?? []).filter((entry) => entry?.track)
       const seen = new Set()
       const sources = []
-      for (const { track, context } of played) {
+      // When each album, playlist or artist was last played, newest first (Your Library sorts by it).
+      const recentContexts = []
+      for (const { track, context, played_at: playedAt } of played) {
         // No context (played from search, say): the track's album stands in.
         const source = context?.uri ? context : track.album?.uri ? { type: 'album', uri: track.album.uri, album: track.album } : null
         if (!source || seen.has(source.uri)) continue
         seen.add(source.uri)
-        sources.push(source)
-        if (sources.length === RECENT_LIMIT) break
+        recentContexts.push({ uri: source.uri, playedAt: Date.parse(playedAt) || null })
+        if (sources.length < RECENT_LIMIT) sources.push(source)
       }
       const items = await Promise.all(
         sources.map((source) =>
@@ -172,6 +203,7 @@ export function createLibrary(client) {
       }
       return {
         recent: items.filter(Boolean),
+        recentContexts,
         recentTracks: tracks.slice(0, 10),
         topArtists: (topArtists?.items ?? []).filter(Boolean).map(toArtist),
         topTracks: (topTracks?.items ?? []).filter(Boolean).map(toTrack)
@@ -194,7 +226,8 @@ export function createLibrary(client) {
 
     async savedAlbums(offset = 0) {
       const body = await client.request('GET', '/me/albums', { query: { limit: LIBRARY_LIMIT, offset } })
-      return { items: (body?.items ?? []).filter((entry) => entry?.album).map((entry) => toAlbum(entry.album)), total: body?.total ?? 0, offset }
+      const items = (body?.items ?? []).filter((entry) => entry?.album)
+      return { items: items.map((entry) => ({ ...toAlbum(entry.album), addedAt: Date.parse(entry.added_at) || null })), total: body?.total ?? 0, offset }
     },
 
     // Followed artists page by cursor: pass the `after` the last page returned.
@@ -240,8 +273,7 @@ export function createLibrary(client) {
         // Playlists Spotify makes (This Is, Daily Mix, Discover Weekly) are closed to new apps:
         // the panel shows what it already knows about it, with Play and Open in Spotify.
         if (error?.kind !== 'not-found') throw error
-        const url = `https://open.spotify.com/playlist/${idOf(uri)}`
-        return { kind: 'playlist', name: null, subtitle: 'Spotify', uri, url, artworkUrl: null, count: null, playable: true, closed: true, tracks: null }
+        return { ...(await closedPlaylist(uri)), playable: true, tracks: null }
       }
       const list = playlistItems(body)
       const entries = Array.isArray(list?.items) ? list.items : null

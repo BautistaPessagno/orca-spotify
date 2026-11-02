@@ -34,7 +34,8 @@ import { runAndSettle } from './settle.mjs'
 // enough for one panel reply. Web API URLs are already picked at ~300 px.
 const ARTWORK_640 = 'ab67616d0000b273'
 const ARTWORK_300 = 'ab67616d00001e02'
-const ARTWORK_HOSTS = [/^https:\/\/i\.scdn\.co\//, /^https:\/\/mosaic\.scdn\.co\//, /^https:\/\/image-cdn-[a-z]+\.spotifycdn\.com\//]
+// Spotify's image hosts: i.scdn.co, mosaic.scdn.co, thisis-images.scdn.co, *.spotifycdn.com.
+const ARTWORK_HOSTS = [/^https:\/\/[a-z0-9-]+\.(scdn\.co|spotifycdn\.com)\//]
 const ARTWORK_MAX_BYTES = 96 * 1024
 const ARTWORK_CACHE = 64
 

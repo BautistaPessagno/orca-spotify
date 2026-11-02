@@ -253,3 +253,13 @@ test('Liked Songs plays as a context, from a chosen track', async () => {
   assert.deepEqual(calls[0], ['playContext', { contextUri: 'spotify:user:bau.pessa:collection', offsetUri: 'spotify:track:t1' }])
   await assert.rejects(handlers['player.playContext']({ contextUri: 'spotify:user:x/../y:collection' }), /album, playlist or artist|Spotify URI/)
 })
+
+test('artwork from any of Spotify\'s image hosts, such as This Is covers', async () => {
+  const { fetchImpl, urls } = fakeFetch()
+  const artwork = createPanelHandlers(fakeSpotify(), { fetchImpl })['player.artwork']
+  assert.ok((await artwork({ url: 'https://thisis-images.scdn.co/37i9dQZF1DZ06evO1-large.jpg' })).dataUrl)
+  assert.ok((await artwork({ url: 'https://pickasso.spotifycdn.com/image/ab67c0de' })).dataUrl)
+  assert.equal((await artwork({ url: 'https://scdn.co.example.com/x' })).dataUrl, null)
+  assert.equal((await artwork({ url: 'http://i.scdn.co/x' })).dataUrl, null)
+  assert.equal(urls.length, 2)
+})

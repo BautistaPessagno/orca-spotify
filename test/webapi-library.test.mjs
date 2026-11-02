@@ -22,10 +22,23 @@ const album = { name: 'LP', uri: 'spotify:album:al', artists: [{ name: 'Artist A
 const artist = { name: 'Artist A', uri: 'spotify:artist:a', images, external_urls: { spotify: 'u' }, type: 'artist' }
 const playlist = { name: 'Focus', uri: 'spotify:playlist:p1', owner: { display_name: 'Me' }, images, external_urls: { spotify: 'u' }, items: { total: 2 } }
 
-function setup(routes) {
+// Spotify's public link previews (oEmbed): the name and cover of any playlist, Spotify's own too.
+function fakeOembed(titles = {}) {
+  const asked = []
+  const fetchImpl = async (url) => {
+    const target = new URL(url).searchParams.get('url')
+    asked.push(target)
+    const id = target.split('/').pop()
+    if (!titles[id]) return { ok: false, status: 404, json: async () => ({}) }
+    return { ok: true, status: 200, json: async () => ({ title: titles[id], thumbnail_url: `https://thisis-images.scdn.co/${id}.jpg` }) }
+  }
+  return { fetchImpl, asked }
+}
+
+function setup(routes, { oembed = fakeOembed() } = {}) {
   const api = fakeSpotifyApi(routes)
   const auth = { getAccessToken: async () => 'token', expire: async () => {}, expiresSoon: async () => false }
-  return { api, backend: createWebApiBackend({ client: createClient({ auth, fetchImpl: api.fetchImpl }), auth }) }
+  return { api, oembed, backend: createWebApiBackend({ client: createClient({ auth, fetchImpl: api.fetchImpl }), auth, fetchImpl: oembed.fetchImpl }) }
 }
 
 test('home: what you played lately, by album or playlist, then your top artists and songs', async () => {
@@ -71,7 +84,7 @@ test('library: Liked Songs, saved albums, followed artists and podcasts', async 
   assert.equal(liked.total, 120)
   assert.equal(liked.uri, 'spotify:user:me:collection')
   const albums = await backend.savedAlbums(0)
-  assert.deepEqual(albums.items[0], { kind: 'album', name: 'LP', subtitle: 'Artist A', uri: 'spotify:album:al', url: 'u', artworkUrl: 'https://i.scdn.co/image/300', year: '2021' })
+  assert.deepEqual(albums.items[0], { kind: 'album', name: 'LP', subtitle: 'Artist A', uri: 'spotify:album:al', url: 'u', artworkUrl: 'https://i.scdn.co/image/300', year: '2021', addedAt: null })
   const artists = await backend.followedArtists()
   assert.equal(artists.items[0].kind, 'artist')
   assert.equal(artists.after, 'a')
@@ -147,11 +160,45 @@ test('search can look for podcasts too', async () => {
 })
 
 test('a Spotify-made playlist (This Is, Daily Mix) opens as a page Spotify keeps closed', async () => {
-  const { backend } = setup({ 'GET /playlists/37i9dQZF1DZ06evO1': reply(404, { error: { status: 404, message: 'Resource not found' } }) })
+  const oembed = fakeOembed({ '37i9dQZF1DZ06evO1': 'This Is Soda Stereo' })
+  const { backend } = setup({ 'GET /playlists/37i9dQZF1DZ06evO1': reply(404, { error: { status: 404, message: 'Resource not found' } }) }, { oembed })
   const page = await backend.playlist('spotify:playlist:37i9dQZF1DZ06evO1')
   assert.equal(page.closed, true)
+  assert.equal(page.name, 'This Is Soda Stereo', 'named from the public link preview')
+  assert.equal(page.artworkUrl, 'https://thisis-images.scdn.co/37i9dQZF1DZ06evO1.jpg')
+  assert.deepEqual(oembed.asked, ['https://open.spotify.com/playlist/37i9dQZF1DZ06evO1'])
   assert.equal(page.tracks, null)
   assert.equal(page.playable, true)
   assert.equal(page.uri, 'spotify:playlist:37i9dQZF1DZ06evO1')
   assert.equal(page.url, 'https://open.spotify.com/playlist/37i9dQZF1DZ06evO1')
+})
+
+
+test('Home keeps the Spotify-made playlists you played, named from their link preview', async () => {
+  const closed = reply(404, { error: { status: 404, message: 'Resource not found' } })
+  const oembed = fakeOembed({ '37i9dQZF1DZ06evO1': 'This Is Soda Stereo' })
+  const { backend } = setup({
+    'GET /me/player/recently-played': reply(200, {
+      items: [
+        { track: track('1'), played_at: '2026-11-02T10:00:00Z', context: { type: 'playlist', uri: 'spotify:playlist:37i9dQZF1DZ06evO1' } },
+        { track: track('2'), played_at: '2026-11-02T09:00:00Z', context: { type: 'album', uri: 'spotify:album:al' } }
+      ]
+    }),
+    'GET /playlists/37i9dQZF1DZ06evO1': closed,
+    'GET /albums/al': reply(200, album)
+  }, { oembed })
+  const home = await backend.home()
+  assert.deepEqual(home.recent[0], {
+    kind: 'playlist', name: 'This Is Soda Stereo', subtitle: 'Spotify', uri: 'spotify:playlist:37i9dQZF1DZ06evO1',
+    url: 'https://open.spotify.com/playlist/37i9dQZF1DZ06evO1', artworkUrl: 'https://thisis-images.scdn.co/37i9dQZF1DZ06evO1.jpg', count: null, closed: true
+  })
+  assert.deepEqual(home.recentContexts, [
+    { uri: 'spotify:playlist:37i9dQZF1DZ06evO1', playedAt: Date.parse('2026-11-02T10:00:00Z') },
+    { uri: 'spotify:album:al', playedAt: Date.parse('2026-11-02T09:00:00Z') }
+  ])
+})
+
+test('saved albums say when you saved them, for sorting by recently added', async () => {
+  const { backend } = setup({ 'GET /me/albums': reply(200, { items: [{ added_at: '2025-01-02T03:04:05Z', album }], total: 1 }) })
+  assert.equal((await backend.savedAlbums(0)).items[0].addedAt, Date.parse('2025-01-02T03:04:05Z'))
 })

@@ -45,8 +45,8 @@ export function toState(raw) {
   return state
 }
 
-export function createWebApiBackend({ client, auth }) {
-  const library = createLibrary(client)
+export function createWebApiBackend({ client, auth, fetchImpl }) {
+  const library = createLibrary(client, { fetchImpl })
   let last = null // the last state read, shown again (stale) while rate limited
 
   const read = () => client.request('GET', '/me/player', { query: { additional_types: 'episode' } })
