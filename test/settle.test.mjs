@@ -55,3 +55,14 @@ test('commands without a visible effect are not retried', async () => {
   await runAndSettle(spotify, 'setVolume', 30, noDelay)
   assert.equal(spotify.reads, 1)
 })
+
+test('retries as many times as the backend says, waiting its step', async () => {
+  const spotify = { ...fakeSpotify({ status: 'paused', track: track('a') }), settle: { tries: 2, stepMs: 400 } }
+  const waits = []
+  const getState = spotify.getState
+  let reads = 0
+  spotify.getState = async () => (reads++, getState())
+  await runAndSettle(spotify, 'play', undefined, { delay: async (ms) => waits.push(ms) })
+  assert.deepEqual(waits, [400, 400])
+  assert.equal(reads, 3)
+})

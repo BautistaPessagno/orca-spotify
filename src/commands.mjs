@@ -1,6 +1,7 @@
 // Palette commands. Orca shows a command's string result as-is, so every handler
-// answers with a sentence, including the "Spotify is closed" and permission cases.
-import { MESSAGES, classifyError } from '../backends/applescript.mjs'
+// answers with a sentence, including the "Spotify is closed", permission, not-connected and
+// no-device cases.
+import { MESSAGES, classifyError } from './backend.mjs'
 import { runAndSettle } from './settle.mjs'
 
 export function describe(state) {
@@ -16,7 +17,8 @@ export function createCommands(spotify, options) {
   const control = (name, summarize = describe) => async () => {
     try {
       const { ran, state } = await runAndSettle(spotify, name, undefined, options)
-      if (!ran) return MESSAGES.closed
+      // No player to send it to: the backend's state says why (closed app, no active device).
+      if (!ran) return state.message ?? MESSAGES.closed
       return state.message ?? summarize(state)
     } catch (error) {
       return classifyError(error).message

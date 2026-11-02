@@ -11,6 +11,7 @@
         --hover: var(--orca-accent, rgba(255, 255, 255, 0.08));
         --on: var(--orca-primary, var(--fg));
         --track: color-mix(in srgb, var(--fg) 16%, transparent);
+        --line: color-mix(in srgb, var(--fg) 10%, transparent);
         --radius: 10px;
       }
       * { box-sizing: border-box; }
@@ -24,10 +25,39 @@
         user-select: none;
       }
       button { font: inherit; color: inherit; cursor: pointer; }
+      input { font: inherit; color: inherit; }
       svg { display: block; }
+      .link {
+        border: 0;
+        padding: 0;
+        background: none;
+        color: var(--muted);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+        font-size: 11.5px;
+      }
+      .link:hover { color: var(--fg); }
+      .link:focus-visible { outline: 2px solid var(--orca-ring, var(--fg)); outline-offset: 2px; border-radius: 2px; }
+
+      /* ---------- tabs (Web API only) ---------- */
+      .tabs { display: flex; gap: 2px; padding: 8px 12px 0; }
+      .tab {
+        flex: 1;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        border: 0;
+        border-radius: 7px;
+        background: transparent;
+        color: var(--muted);
+      }
+      .tab svg { width: 16px; height: 16px; }
+      .tab:hover { background: var(--hover); color: var(--fg); }
+      .tab[aria-selected='true'] { background: var(--hover); color: var(--fg); }
+      .tab:focus-visible { outline: 2px solid var(--orca-ring, var(--fg)); outline-offset: -2px; }
 
       /* ---------- player ---------- */
-      .player { position: relative; padding: 14px 18px 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+      .player { position: relative; padding: 14px 18px 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
       /* The cover, blurred, glows behind the top of the panel and fades into the background. */
       .backdrop {
         position: absolute;
@@ -48,19 +78,40 @@
         display: flex;
         align-items: center;
         gap: 8px;
+        min-width: 0;
         font-size: 10.5px;
         font-weight: 600;
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--muted);
       }
-      .eq { display: flex; align-items: flex-end; gap: 2px; height: 10px; }
+      .eq { display: flex; align-items: flex-end; gap: 2px; height: 10px; flex: none; }
       .eq i { width: 2px; height: 3px; border-radius: 1px; background: currentColor; }
       .playing .eyebrow { color: var(--fg); }
       .playing .eq i { animation: eq 900ms ease-in-out infinite alternate; }
       .playing .eq i:nth-child(2) { animation-delay: -300ms; }
       .playing .eq i:nth-child(3) { animation-delay: -600ms; }
       @keyframes eq { from { height: 3px; } to { height: 10px; } }
+      .chip {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        min-width: 0;
+        max-width: 55%;
+        border: 0;
+        border-radius: 999px;
+        padding: 3px 8px;
+        background: var(--hover);
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0;
+        text-transform: none;
+      }
+      .chip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .chip svg { width: 12px; height: 12px; flex: none; }
+      .chip:hover { color: var(--fg); }
 
       .cover {
         aspect-ratio: 1;
@@ -81,10 +132,14 @@
       .cover img { grid-area: 1 / 1; }
       .cover:has(img.on) .ph { display: none; }
 
-      .meta { display: grid; gap: 1px; min-width: 0; padding-top: 2px; }
+      .meta-row { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+      .meta { display: grid; gap: 1px; min-width: 0; flex: 1; padding-top: 2px; }
       .meta .title { font-size: 16px; font-weight: 650; letter-spacing: -0.01em; }
       .meta .sub { color: var(--muted); }
       .meta .title, .meta .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      /* Attribution the Spotify Developer Terms ask for next to Spotify metadata and artwork. */
+      .spotify-link { flex: none; margin-top: 2px; }
+      .spotify-link svg { width: 18px; height: 18px; }
 
       /* ---------- sliders (seek and volume) ---------- */
       .slider {
@@ -144,7 +199,7 @@
       }
       .ctl:hover { background: var(--hover); }
       .ctl:active { transform: scale(0.92); }
-      .ctl:focus-visible, .btn:focus-visible, .icon-btn:focus-visible {
+      .ctl:focus-visible, .btn:focus-visible, .icon-btn:focus-visible, .row:focus-visible {
         outline: 2px solid var(--orca-ring, var(--fg));
         outline-offset: 2px;
       }
@@ -180,14 +235,74 @@
         color: var(--muted);
       }
       .icon-btn:hover { background: var(--hover); color: var(--fg); }
+      .icon-btn:disabled { opacity: 0.4; cursor: default; }
       .icon-btn svg { width: 16px; height: 16px; }
+      .stale { font-size: 11px; color: var(--muted); text-align: center; }
 
-      /* ---------- empty states ---------- */
+      /* ---------- lists (queue, search, playlists, devices) ---------- */
+      .pane { padding: 12px 12px 16px; display: grid; gap: 10px; }
+      .pane h3 {
+        margin: 6px 6px 0;
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .rows { display: grid; gap: 1px; }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        min-width: 0;
+        padding: 6px;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        text-align: left;
+      }
+      button.row:hover { background: var(--hover); }
+      div.row { cursor: default; }
+      .row .thumb {
+        flex: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 5px;
+        /* contain, not cover: Spotify's terms forbid cropping its artwork. */
+        background: var(--track) center / contain no-repeat;
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+      }
+      .row .thumb svg { width: 16px; height: 16px; }
+      .row .text { display: grid; min-width: 0; flex: 1; }
+      .row .text b, .row .text span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .row .text b { font-weight: 550; }
+      .row .text span { color: var(--muted); font-size: 12px; }
+      .row.current .text b { color: var(--on); }
+      .row .end { flex: none; color: var(--muted); font-size: 11px; }
+      .row-wrap { display: flex; align-items: center; gap: 2px; min-width: 0; }
+      .row-wrap .row { flex: 1; }
+      .search-box {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: transparent;
+        outline: none;
+        user-select: text;
+      }
+      .search-box:focus { border-color: var(--orca-ring, var(--fg)); }
+      .note { margin: 4px 6px; color: var(--muted); font-size: 12px; }
+      .more { justify-self: center; }
+
+      /* ---------- empty states and setup ---------- */
       .empty {
         display: grid;
         justify-items: center;
         gap: 10px;
-        padding: 56px 24px;
+        padding: 56px 24px 24px;
         text-align: center;
         line-height: 1.5;
       }
@@ -204,8 +319,7 @@
       .empty .badge svg { width: 24px; height: 24px; }
       .empty b { font-size: 14px; font-weight: 600; }
       .empty p { margin: 0; color: var(--muted); max-width: 260px; }
-      .empty ol { margin: 0; padding-left: 18px; color: var(--muted); text-align: left; }
-      .empty kbd { font: 11px ui-monospace, Menlo, monospace; color: var(--fg); }
+      .empty .rows { width: 100%; max-width: 300px; text-align: left; }
       .btn {
         margin-top: 6px;
         border: 0;
@@ -216,6 +330,66 @@
         font-weight: 600;
       }
       .btn:hover { opacity: 0.9; }
+      .btn:disabled { opacity: 0.4; cursor: default; }
+      .btn.small { margin: 0; padding: 4px 10px; font-size: 12px; }
+
+      .setup { padding: 18px 18px 8px; display: grid; gap: 14px; }
+      .setup h2 { margin: 0; font-size: 16px; font-weight: 650; }
+      .setup > p { margin: 0; color: var(--muted); }
+      .steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; counter-reset: step; }
+      .steps li { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; counter-increment: step; }
+      .steps li::before {
+        content: counter(step);
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--hover);
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 600;
+        display: grid;
+        place-items: center;
+      }
+      .steps li > div { display: grid; gap: 6px; min-width: 0; color: var(--muted); }
+      .steps li b { color: var(--fg); font-weight: 550; }
+      .field { display: flex; gap: 6px; min-width: 0; }
+      .field input {
+        flex: 1;
+        min-width: 0;
+        padding: 6px 8px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: transparent;
+        outline: none;
+        font: 12px ui-monospace, Menlo, monospace;
+        user-select: text;
+      }
+      .field input:focus { border-color: var(--orca-ring, var(--fg)); }
+      .status { min-height: 1.4em; color: var(--muted); font-size: 12px; }
+      .status.bad { color: var(--orca-destructive, #e5484d); }
+      .warn {
+        border-radius: 8px;
+        padding: 8px 10px;
+        background: color-mix(in srgb, #f5a524 14%, transparent);
+        color: var(--fg);
+        font-size: 12px;
+      }
+
+      /* ---------- footer ---------- */
+      .footer {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 4px 10px;
+        padding: 8px 18px 18px;
+        color: var(--muted);
+        font-size: 11.5px;
+        text-align: center;
+      }
+      .footer .warn { width: 100%; }
+      .attribution { display: flex; align-items: center; gap: 5px; }
+      .attribution svg { width: 14px; height: 14px; }
 
       @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -230,24 +404,51 @@
       <symbol id="i-prev" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.07v11.86a1 1 0 0 1-1.55.83l-8.7-5.93a1 1 0 0 1 0-1.66l8.7-5.93A1 1 0 0 1 19 6.07z" /><rect x="4.6" y="5" width="2.4" height="14" rx="1.2" /></symbol>
       <symbol id="i-shuffle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22" /><path d="m18 2 4 4-4 4" /><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2" /><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8" /><path d="m18 14 4 4-4 4" /></symbol>
       <symbol id="i-repeat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" /><path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" /></symbol>
+      <symbol id="i-repeat-one" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" /><path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" /><path d="M11 10h1v4" /></symbol>
       <symbol id="i-vol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M19 5a10 10 0 0 1 0 14" /></symbol>
       <symbol id="i-vol-low" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /></symbol>
       <symbol id="i-mute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z" /><path d="m22 9-6 6" /><path d="m16 9 6 6" /></symbol>
       <symbol id="i-music" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></symbol>
       <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></symbol>
       <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 8v4" /><path d="M12 16h.01" /></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></symbol>
+      <symbol id="i-disc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="2.5" /></symbol>
+      <symbol id="i-person" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></symbol>
+      <symbol id="i-queue" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h13" /><path d="M3 12h13" /><path d="M3 18h9" /><path d="m17 15 4 3-4 3z" fill="currentColor" /></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></symbol>
+      <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></symbol>
+      <symbol id="i-device" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" /><circle cx="12" cy="14" r="3.5" /><path d="M12 6h.01" /></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8" /><path d="M21 3v5h-5" /></symbol>
+      <!-- Placeholder for the Spotify icon. Replace it with the official icon from Spotify's
+           design guidelines (developer.spotify.com/documentation/design) before release. -->
+      <symbol id="i-spotify" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="10" /><path d="M7 9.5c3.5-1 7.3-.7 10.2.9" /><path d="M7.6 12.6c2.9-.8 5.9-.5 8.4.8" /><path d="M8.2 15.5c2.3-.6 4.5-.4 6.5.6" /></symbol>
     </svg>
+
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Now Playing" hidden>
+      <button type="button" class="tab" role="tab" data-tab="player" aria-label="Player" title="Player"><svg><use href="#i-music" /></svg></button>
+      <button type="button" class="tab" role="tab" data-tab="queue" aria-label="Queue" title="Queue"><svg><use href="#i-queue" /></svg></button>
+      <button type="button" class="tab" role="tab" data-tab="search" aria-label="Search" title="Search"><svg><use href="#i-search" /></svg></button>
+      <button type="button" class="tab" role="tab" data-tab="playlists" aria-label="Your playlists" title="Your playlists"><svg><use href="#i-list" /></svg></button>
+      <button type="button" class="tab" role="tab" data-tab="devices" aria-label="Devices" title="Devices"><svg><use href="#i-device" /></svg></button>
+    </nav>
 
     <main class="player" id="v-player" hidden>
       <div class="backdrop" id="backdrop"></div>
-      <div class="eyebrow"><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span id="eyebrow">Now playing</span></div>
+      <div class="eyebrow">
+        <span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span id="eyebrow">Now playing</span>
+        <button type="button" class="chip" id="device-chip" hidden><svg><use href="#i-device" /></svg><span id="device-name"></span></button>
+      </div>
       <div class="cover">
         <svg class="ph"><use href="#i-music" /></svg>
         <img id="art" alt="" />
       </div>
-      <div class="meta">
-        <div class="title" id="title"></div>
-        <div class="sub" id="artist"></div>
+      <div class="meta-row">
+        <div class="meta">
+          <div class="title" id="title"></div>
+          <div class="sub" id="artist"></div>
+        </div>
+        <button type="button" class="icon-btn spotify-link" id="open-track" aria-label="Open in Spotify" title="Open in Spotify" hidden><svg><use href="#i-spotify" /></svg></button>
       </div>
       <div class="seek">
         <input type="range" class="slider" id="seek" min="0" max="1" step="1" value="0" aria-label="Position" />
@@ -258,12 +459,13 @@
         <button type="button" class="ctl" id="prev" aria-label="Previous"><svg><use href="#i-prev" /></svg></button>
         <button type="button" class="ctl main" id="play" aria-label="Play"><svg><use href="#i-play" id="play-icon" /></svg></button>
         <button type="button" class="ctl" id="next" aria-label="Next"><svg><use href="#i-next" /></svg></button>
-        <button type="button" class="ctl toggle" id="repeat" aria-label="Repeat" aria-pressed="false"><svg><use href="#i-repeat" /></svg></button>
+        <button type="button" class="ctl toggle" id="repeat" aria-label="Repeat" aria-pressed="false"><svg><use href="#i-repeat" id="repeat-icon" /></svg></button>
       </div>
-      <div class="volume">
+      <div class="volume" id="volume">
         <button type="button" class="icon-btn" id="mute" aria-label="Mute"><svg><use href="#i-vol" id="vol-icon" /></svg></button>
         <input type="range" class="slider" id="vol" min="0" max="100" step="1" aria-label="Volume" />
       </div>
+      <div class="stale" id="stale" hidden>Spotify asked to slow down; this may be a few seconds old.</div>
     </main>
 
     <div class="empty" id="v-message" hidden>
@@ -271,30 +473,150 @@
       <b id="msg-title"></b>
       <p id="msg-body"></p>
       <button type="button" class="btn" id="msg-action" hidden></button>
+      <div class="rows" id="msg-rows" hidden></div>
     </div>
+
+    <section class="setup" id="v-setup" hidden>
+      <h2 id="setup-title">Connect Spotify</h2>
+      <p id="setup-lead">Now Playing controls Spotify through the Spotify Web API, on any device you play on.</p>
+      <ol class="steps">
+        <li><div><b>Have Spotify Premium.</b><span>Spotify only lets Premium accounts control playback.</span></div></li>
+        <li>
+          <div>
+            <b>Create an app on the Spotify dashboard.</b>
+            <span>Pick “Web API” and accept the Developer Terms.</span>
+            <span><button type="button" class="link" id="open-dashboard">Open developer.spotify.com/dashboard</button></span>
+          </div>
+        </li>
+        <li>
+          <div>
+            <b>Add this redirect URI to the app.</b>
+            <div class="field">
+              <input id="redirect-uri" readonly aria-label="Redirect URI" value="http://127.0.0.1:43117/callback" />
+              <button type="button" class="btn small" id="copy-uri">Copy</button>
+            </div>
+          </div>
+        </li>
+        <li>
+          <div>
+            <b>Paste the app’s Client ID.</b>
+            <div class="field"><input id="client-id" maxlength="64" spellcheck="false" autocomplete="off" placeholder="Client ID from developer.spotify.com" aria-label="Client ID" /></div>
+          </div>
+        </li>
+        <li>
+          <div>
+            <b>Connect, and approve in the browser.</b>
+            <span>Orca asks once whether Now Playing may open accounts.spotify.com.</span>
+            <span><button type="button" class="btn" id="connect" disabled>Connect with Spotify</button></span>
+            <div class="status" id="setup-status" role="status"></div>
+          </div>
+        </li>
+        <li><div><b>Open Spotify on any device.</b><span>The player shows up here.</span></div></li>
+      </ol>
+      <button type="button" class="link" id="setup-cancel" hidden>Not now, back to the player</button>
+      <div class="warn" id="keyring-warning" hidden>
+        Orca can’t reach a keyring on this computer, so the login lasts only until Now Playing’s worker stops (5 minutes idle).
+        Install gnome-keyring or KWallet to keep it.
+      </div>
+    </section>
+
+    <section class="pane" id="v-queue" hidden>
+      <div class="row-wrap"><h3 style="flex: 1">Now playing</h3><button type="button" class="icon-btn" id="queue-refresh" aria-label="Refresh queue" title="Refresh"><svg><use href="#i-refresh" /></svg></button></div>
+      <div class="rows" id="queue-current"></div>
+      <h3>Next up</h3>
+      <div class="rows" id="queue-rows"></div>
+      <p class="note" id="queue-note" hidden></p>
+    </section>
+
+    <section class="pane" id="v-search" hidden>
+      <input type="search" class="search-box" id="search-q" placeholder="Songs, albums, artists, playlists" aria-label="Search Spotify" autocomplete="off" spellcheck="false" />
+      <div class="rows" id="search-results"></div>
+      <p class="note" id="search-note" hidden></p>
+    </section>
+
+    <section class="pane" id="v-playlists" hidden>
+      <h3>Your playlists</h3>
+      <div class="rows" id="playlist-rows"></div>
+      <button type="button" class="link more" id="playlists-more" hidden>Show more</button>
+      <p class="note" id="playlists-note" hidden></p>
+    </section>
+
+    <section class="pane" id="v-devices" hidden>
+      <div class="row-wrap"><h3 style="flex: 1">Play on</h3><button type="button" class="icon-btn" id="devices-refresh" aria-label="Refresh devices" title="Refresh"><svg><use href="#i-refresh" /></svg></button></div>
+      <div class="rows" id="device-rows"></div>
+      <p class="note" id="devices-note" hidden></p>
+    </section>
+
+    <footer class="footer" id="footer" hidden>
+      <div class="warn" id="expiry-warning" hidden>
+        Spotify ends this login soon (every 6 months). <button type="button" class="link" id="reconnect">Reconnect</button>
+      </div>
+      <button type="button" class="link attribution" id="attribution" hidden><svg><use href="#i-spotify" /></svg>Content from Spotify</button>
+      <span id="connection-age" hidden></span>
+      <button type="button" class="link" id="disconnect" hidden>Disconnect</button>
+      <button type="button" class="link" id="to-webapi" hidden>Search, queue and devices → use the Spotify Web API</button>
+      <button type="button" class="link" id="to-desktop" hidden>Back to the desktop app</button>
+    </footer>
 
     <script>
       'use strict'
       // Orca injects a frozen window.orca before this script runs.
       var $ = function (id) { return document.getElementById(id) }
-      var POLL_MS = 1000
-      var HIDDEN_POLL_MS = 4000
+      // Until backend.info answers: the desktop app's intervals.
+      var DEFAULT_CAPS = { repeatModes: ['off', 'context'], seekStepMs: 1000, poll: { playing: 1000, paused: 1000, hidden: 4000 } }
+      var DASHBOARD_URL = 'https://developer.spotify.com/dashboard'
+      var LOGIN_WATCH_MS = 3 * 60 * 1000
 
+      var info = null // backend.info: { id, capabilities, available, connection }
       var state = null
       var stateAt = 0
       var timer = null
       var artworkUrl = null
       var dragging = false
       var lastVolume = 50
+      var tab = 'player'
+      // Set while the person opened the setup view by hand from the desktop-app player.
+      var setupWanted = false
+      // Set while a still-working login is being renewed (Reconnect): keep the tokens until then.
+      var reconnecting = false
+      var login = { url: null, watching: null, until: 0, prepare: null, keepAlive: null }
+      // The worker closes its login server after 2 minutes unless asked again; re-ask this often
+      // while the setup view waits for a click.
+      var LOGIN_KEEPALIVE_MS = 60 * 1000
       // Each request gets a number. A reply older than the last command's is stale (it was read
       // before the command ran), so it never overwrites what the command showed.
       var requestSeq = 0
       var appliedSeq = 0
       var commandsInFlight = 0
 
+      // Input must be JSON, so leave it out rather than send undefined.
+      function request(name, input) {
+        return input === undefined ? orca.plugin.request(name) : orca.plugin.request(name, input)
+      }
+
+      function caps() {
+        return (info && info.capabilities) || DEFAULT_CAPS
+      }
+
+      function isWebApi() {
+        return Boolean(info && info.id === 'webapi')
+      }
+
+      function connection() {
+        return (info && info.connection) || {}
+      }
+
       function fmt(ms) {
         var s = Math.max(0, Math.floor(ms / 1000))
         return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0')
+      }
+
+      function ago(ms) {
+        var days = Math.floor((Date.now() - ms) / 86400000)
+        if (days < 1) return 'today'
+        if (days < 31) return days === 1 ? 'yesterday' : days + ' days ago'
+        var months = Math.floor(days / 30)
+        return months === 1 ? 'a month ago' : months + ' months ago'
       }
 
       function setSlider(el, value) {
@@ -303,8 +625,40 @@
         el.style.setProperty('--val', (Math.min(value, max) / max) * 100 + '%')
       }
 
+      // Needs the click itself: call it straight from a click handler, never after an await.
+      function openExternal(url) {
+        if (!url) return
+        Promise.resolve(orca.shell.openExternal(url)).catch(function () {})
+      }
+
+      // ---------- views ----------
+
+      var VIEWS = ['v-player', 'v-message', 'v-setup', 'v-queue', 'v-search', 'v-playlists', 'v-devices']
+
       function show(view) {
-        ;['v-player', 'v-message'].forEach(function (id) { $(id).hidden = id !== view })
+        VIEWS.forEach(function (id) { $(id).hidden = id !== view })
+        renderChrome(view)
+      }
+
+      // Tabs and footer: what the active backend offers around the current view.
+      function renderChrome(view) {
+        var web = isWebApi()
+        var conn = connection()
+        var setup = view === 'v-setup'
+        var connected = web && conn.connected && !setup
+        $('tabs').hidden = !connected || view === 'v-message'
+        Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (button) {
+          button.setAttribute('aria-selected', String(button.dataset.tab === tab))
+        })
+        var macOS = Boolean(info && info.available && info.available.indexOf('applescript') !== -1)
+        $('to-webapi').hidden = !(macOS && !web && !setup)
+        $('to-desktop').hidden = !(macOS && (web || setupWanted))
+        $('disconnect').hidden = !connected
+        $('connection-age').hidden = !(connected && conn.authorizedAt)
+        if (conn.authorizedAt) $('connection-age').textContent = 'Connected ' + ago(conn.authorizedAt)
+        $('expiry-warning').hidden = !(connected && ((state && state.authExpiresSoon) || conn.expiresSoon))
+        $('attribution').hidden = !(connected && view !== 'v-player' && view !== 'v-message')
+        $('footer').hidden = document.querySelectorAll('#footer > :not([hidden])').length === 0
       }
 
       function showMessage(icon, title, body, action) {
@@ -312,6 +666,8 @@
         $('msg-title').textContent = title
         $('msg-body').textContent = body
         $('msg-action').hidden = !action
+        $('msg-rows').hidden = true
+        $('msg-rows').textContent = ''
         if (action) {
           $('msg-action').textContent = action.label
           $('msg-action').onclick = action.run
@@ -326,11 +682,11 @@
         return Math.min(pos, state.track.durationMs)
       }
 
-      // Moves the progress between polls so it doesn't jump once a second.
+      // Moves the progress between polls so it doesn't jump with each read.
       function renderProgress() {
-        if (!state || !state.track || dragging) return
+        if (!state || !state.track || dragging || $('v-player').hidden) return
         var pos = positionNow()
-        setSlider($('seek'), Math.floor(pos / 1000))
+        setSlider($('seek'), Math.floor(pos / caps().seekStepMs))
         $('pos').textContent = fmt(pos)
       }
 
@@ -341,10 +697,28 @@
         $('mute').setAttribute('aria-label', volume === 0 ? 'Unmute' : 'Mute')
       }
 
+      function renderRepeat(mode) {
+        $('repeat').setAttribute('aria-pressed', String(mode !== 'off'))
+        $('repeat-icon').setAttribute('href', mode === 'track' ? '#i-repeat-one' : '#i-repeat')
+        var label = mode === 'track' ? 'Repeat: this track' : mode === 'context' ? 'Repeat: on' : 'Repeat: off'
+        $('repeat').setAttribute('aria-label', label)
+        $('repeat').title = label
+      }
+
       function render(next) {
+        // The backend changed (Settings, or a switch link): reload what it can do first.
+        if (next.backend && info && next.backend !== info.id) {
+          state = next
+          tab = 'player'
+          return loadInfo().then(function () { render(next) }, function () {})
+        }
         state = next
         stateAt = Date.now()
+        if ((setupWanted && !isWebApi()) || reconnecting) return renderSetup()
         switch (next.status) {
+          case 'needs-setup':
+          case 'unauthenticated':
+            return renderSetup()
           case 'closed':
             return showMessage('#i-music', 'Spotify is not open', 'Open the Spotify desktop app and this panel updates by itself.', {
               label: 'Open Spotify',
@@ -352,12 +726,21 @@
             })
           case 'no-permission':
             return showMessage('#i-lock', 'Orca can’t control Spotify', next.message, { label: 'Try again', run: poll })
+          case 'no-device':
+            return renderNoDevice(next)
+          case 'rate-limited':
+            return showMessage('#i-clock', 'Spotify asked to slow down', next.message, null)
           case 'unsupported':
           case 'error':
             return showMessage('#i-alert', 'Spotify is unavailable', next.message, { label: 'Try again', run: poll })
         }
+        // The lists stay put while playback changes underneath them.
+        if (tab !== 'player') return $('v-' + tab).hidden && show('v-' + tab)
         if (!next.track) return showMessage('#i-music', 'Nothing is playing', 'Start something in Spotify and it shows up here.', null)
+        renderPlayer(next)
+      }
 
+      function renderPlayer(next) {
         show('v-player')
         var playing = next.status === 'playing'
         document.body.className = playing ? 'playing' : 'paused'
@@ -367,17 +750,390 @@
         var sub = [next.track.artist, next.track.album].filter(Boolean).join(' · ')
         $('artist').textContent = sub
         $('artist').title = sub
+        $('open-track').hidden = !next.track.url
+        $('device-chip').hidden = !next.device
+        if (next.device) {
+          $('device-name').textContent = next.device.name
+          $('device-chip').title = 'Playing on ' + next.device.name + '. Switch device'
+        }
         $('play-icon').setAttribute('href', playing ? '#i-pause' : '#i-play')
         $('play').setAttribute('aria-label', playing ? 'Pause' : 'Play')
         $('shuffle').setAttribute('aria-pressed', String(next.shuffle))
-        $('repeat').setAttribute('aria-pressed', String(next.repeat))
-        $('seek').max = Math.max(1, Math.floor(next.track.durationMs / 1000))
+        renderRepeat(next.repeat)
+        $('seek').max = Math.max(1, Math.floor(next.track.durationMs / caps().seekStepMs))
         $('dur').textContent = fmt(next.track.durationMs)
+        $('volume').hidden = Boolean(next.device && next.device.supportsVolume === false)
         if (document.activeElement !== $('vol')) renderVolume(next.volume)
         if (next.volume > 0) lastVolume = next.volume
+        $('stale').hidden = !next.stale
         renderProgress()
         loadArtwork(next.track.artworkUrl)
       }
+
+      // No active device: list the ones Spotify knows, each with "Play here". The list is read
+      // again with each state read, so a device that comes online shows up.
+      function renderNoDevice(next) {
+        var showing = !$('v-message').hidden && $('msg-title').textContent === 'No active device'
+        if (!showing) showMessage('#i-device', 'No active device', next.message, { label: 'Try again', run: poll })
+        request('player.devices').then(function (devices) {
+          if (!state || state.status !== 'no-device') return
+          var rows = $('msg-rows')
+          rows.textContent = ''
+          devices.forEach(function (device) { rows.appendChild(deviceRow(device, 'Play here', true)) })
+          rows.hidden = !devices.length
+        }, function () {})
+      }
+
+      // ---------- setup ----------
+
+      function renderSetup() {
+        var conn = connection()
+        var reconnect = state && state.status === 'unauthenticated' && conn.clientId
+        $('setup-title').textContent = reconnect ? 'Reconnect Spotify' : 'Connect Spotify'
+        $('setup-lead').textContent = reconnect
+          ? 'Your Spotify login ended. Connect again to keep controlling playback.'
+          : 'Now Playing controls Spotify through the Spotify Web API, on any device you play on.'
+        if (conn.redirectUri) $('redirect-uri').value = conn.redirectUri
+        if (document.activeElement !== $('client-id') && !$('client-id').value) $('client-id').value = conn.clientId || ''
+        $('keyring-warning').hidden = conn.protection !== 'unavailable'
+        $('setup-cancel').hidden = !reconnecting
+        document.body.className = ''
+        var first = $('v-setup').hidden
+        show('v-setup')
+        // Build the login URL before any click: opening the browser needs the click itself.
+        if (first && $('client-id').value && !login.watching) prepareLogin()
+        if (!login.keepAlive) {
+          login.keepAlive = setInterval(function () {
+            if ($('v-setup').hidden) return stopKeepAlive()
+            if (!login.watching && login.url) prepareLogin(true)
+          }, LOGIN_KEEPALIVE_MS)
+        }
+      }
+
+      function stopKeepAlive() {
+        clearInterval(login.keepAlive)
+        login.keepAlive = null
+      }
+
+      function setStatus(text, bad) {
+        $('setup-status').textContent = text || ''
+        $('setup-status').className = bad ? 'status bad' : 'status'
+      }
+
+      // Asks the worker for the login URL (the same one while a login waits). `keepStatus` leaves
+      // the status line alone unless the worker has something to say.
+      function prepareLogin(keepStatus) {
+        var clientId = $('client-id').value.trim()
+        if (!keepStatus) {
+          login.url = null
+          $('connect').disabled = true
+        }
+        if (!clientId) return setStatus('')
+        return request('auth.start', { clientId: clientId }).then(function (reply) {
+          if (clientId !== $('client-id').value.trim()) return
+          login.url = reply.url
+          $('connect').disabled = !reply.url
+          if (reply.message || !keepStatus) setStatus(reply.message || '', Boolean(reply.message))
+        }, function (error) {
+          setStatus((error && error.message) || String(error), true)
+        })
+      }
+
+      function connect() {
+        if (!login.url) return
+        openExternal(login.url)
+        setStatus('Waiting for you to approve in the browser…')
+        login.until = Date.now() + LOGIN_WATCH_MS
+        clearInterval(login.watching)
+        login.watching = setInterval(watchLogin, 1000)
+      }
+
+      function stopWatching() {
+        clearInterval(login.watching)
+        login.watching = null
+      }
+
+      // Asks the worker every second whether the browser came back. While it asks, the worker
+      // keeps its loopback server open.
+      function watchLogin() {
+        if (Date.now() > login.until) {
+          stopWatching()
+          setStatus('The login timed out. Click Connect to try again.', true)
+          return prepareLogin(true)
+        }
+        request('auth.status').then(function (reply) {
+          if (reply.status === 'pending' || !login.watching) return
+          stopWatching()
+          if (reply.status === 'failed') {
+            setStatus(reply.message, true)
+            return prepareLogin(true)
+          }
+          if (reply.status !== 'connected') return
+          setStatus('Connected.')
+          stopKeepAlive()
+          setupWanted = false
+          reconnecting = false
+          tab = 'player'
+          var select = isWebApi() ? null : request('backend.select', { backend: 'webapi' })
+          Promise.resolve(select).then(loadInfo).then(poll, fail)
+        }, function () {})
+      }
+
+      // ---------- lists ----------
+
+      function el(tag, className, text) {
+        var node = document.createElement(tag)
+        if (className) node.className = className
+        if (text !== undefined) node.textContent = text
+        return node
+      }
+
+      function icon(name) {
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+        var use = document.createElementNS('http://www.w3.org/2000/svg', 'use')
+        use.setAttribute('href', name)
+        svg.appendChild(use)
+        return svg
+      }
+
+      // Artwork comes from the worker as a data: URL (the panel has no network).
+      function thumb(url, fallback) {
+        var box = el('span', 'thumb')
+        box.appendChild(icon(fallback))
+        if (url) {
+          request('player.artwork', { url: url }).then(function (reply) {
+            if (!reply || !reply.dataUrl) return
+            box.textContent = ''
+            box.style.backgroundImage = 'url("' + reply.dataUrl + '")'
+          }, function () {})
+        }
+        return box
+      }
+
+      // A list row. Without `onClick` it is plain text. Rows with a Spotify URL get a link back to
+      // Spotify, as its terms ask next to its metadata.
+      function row(item, onClick, extra) {
+        var button = el(onClick ? 'button' : 'div', 'row' + (item.current ? ' current' : ''))
+        if (onClick) button.type = 'button'
+        button.appendChild(thumb(item.artworkUrl, item.icon || '#i-music'))
+        var text = el('span', 'text')
+        text.appendChild(el('b', '', item.title))
+        if (item.subtitle) text.appendChild(el('span', '', item.subtitle))
+        button.appendChild(text)
+        if (item.end) button.appendChild(el('span', 'end', item.end))
+        button.title = item.subtitle ? item.title + ' · ' + item.subtitle : item.title
+        if (onClick) button.addEventListener('click', onClick)
+        if (!extra && !item.url) return button
+        var wrap = el('div', 'row-wrap')
+        wrap.appendChild(button)
+        if (extra) wrap.appendChild(extra)
+        if (item.url) wrap.appendChild(spotifyLink(item.url))
+        return wrap
+      }
+
+      function spotifyLink(url) {
+        var link = el('button', 'icon-btn')
+        link.type = 'button'
+        link.setAttribute('aria-label', 'Open in Spotify')
+        link.title = 'Open in Spotify'
+        link.appendChild(icon('#i-spotify'))
+        link.addEventListener('click', function () { openExternal(url) })
+        return link
+      }
+
+      function trackItem(track) {
+        return { title: track.title, subtitle: track.artist, artworkUrl: track.artworkUrl, url: track.url, end: fmt(track.durationMs) }
+      }
+
+      function note(id, text) {
+        $(id).hidden = !text
+        $(id).textContent = text || ''
+      }
+
+      function failNote(id) {
+        return function (error) { note(id, (error && error.message) || String(error)) }
+      }
+
+      // Runs a request that changes playback and answers with the new state, then shows the
+      // player with it.
+      function change(name, input) {
+        tab = 'player'
+        var seq = ++requestSeq
+        commandsInFlight++
+        return request(name, input).then(function (next) {
+          commandsInFlight--
+          if (seq > appliedSeq) {
+            appliedSeq = seq
+            render(next)
+          }
+          schedule()
+        }, function (error) {
+          commandsInFlight--
+          fail(error)
+        })
+      }
+
+      function play(input) {
+        return change('player.playContext', input)
+      }
+
+      function enqueueButton(track) {
+        var button = el('button', 'icon-btn')
+        button.type = 'button'
+        button.setAttribute('aria-label', 'Add to queue')
+        button.title = 'Add to queue'
+        button.appendChild(icon('#i-plus'))
+        button.addEventListener('click', function () {
+          button.disabled = true
+          request('player.enqueue', { uri: track.uri }).then(function () {
+            button.title = 'Added to queue'
+            button.setAttribute('aria-label', 'Added to queue')
+          }, function (error) {
+            button.disabled = false
+            button.title = (error && error.message) || 'Could not add to the queue'
+          })
+        })
+        return button
+      }
+
+      function loadQueue() {
+        note('queue-note', '')
+        request('player.queue').then(function (reply) {
+          $('queue-current').textContent = ''
+          $('queue-rows').textContent = ''
+          if (reply.current) {
+            var current = trackItem(reply.current)
+            current.current = true
+            $('queue-current').appendChild(row(current, function () { setTab('player') }))
+          }
+          // The Web API can't skip ahead to a queued track, so these rows only show the order.
+          reply.queue.forEach(function (track) {
+            $('queue-rows').appendChild(row(trackItem(track), null))
+          })
+          if (!reply.queue.length) note('queue-note', 'The queue is empty. Add songs from Search.')
+        }, failNote('queue-note'))
+      }
+
+      var search = { q: '', timer: null, seq: 0, sections: {} }
+      var SECTIONS = [
+        { key: 'tracks', type: 'track', title: 'Songs' },
+        { key: 'albums', type: 'album', title: 'Albums' },
+        { key: 'artists', type: 'artist', title: 'Artists' },
+        { key: 'playlists', type: 'playlist', title: 'Playlists' }
+      ]
+
+      function searchRow(section, item) {
+        if (section.key === 'tracks') {
+          return row(trackItem(item), function () { play({ uris: [item.uri] }) }, enqueueButton(item))
+        }
+        var artist = section.key === 'artists'
+        var view = { title: item.name, subtitle: item.subtitle, artworkUrl: item.artworkUrl, url: item.url, icon: artist ? '#i-person' : '#i-disc' }
+        return row(view, function () { play({ contextUri: item.uri }) })
+      }
+
+      function renderSearch() {
+        var box = $('search-results')
+        box.textContent = ''
+        var any = false
+        SECTIONS.forEach(function (section) {
+          var page = search.sections[section.key]
+          if (!page || !page.items.length) return
+          any = true
+          box.appendChild(el('h3', '', section.title))
+          page.items.forEach(function (item) { box.appendChild(searchRow(section, item)) })
+          if (page.items.length < page.total) {
+            var more = el('button', 'link more', 'More ' + section.title.toLowerCase())
+            more.type = 'button'
+            more.addEventListener('click', function () { searchMore(section) })
+            box.appendChild(more)
+          }
+        })
+        if (search.q.length >= 2 && !any && search.done) note('search-note', 'Nothing found for “' + search.q + '”.')
+      }
+
+      function runSearch() {
+        var q = $('search-q').value.trim()
+        search.q = q
+        search.sections = {}
+        search.done = false
+        note('search-note', '')
+        var seq = ++search.seq
+        if (q.length < 2) return renderSearch()
+        request('library.search', { q: q }).then(function (results) {
+          if (seq !== search.seq) return
+          search.sections = results
+          search.done = true
+          renderSearch()
+        }, failNote('search-note'))
+      }
+
+      function searchMore(section) {
+        var page = search.sections[section.key]
+        var seq = search.seq
+        request('library.search', { q: search.q, types: [section.type], offset: page.items.length }).then(function (results) {
+          var next = results[section.key]
+          if (seq !== search.seq || !next) return
+          page.items = page.items.concat(next.items)
+          page.total = next.total
+          renderSearch()
+        }, failNote('search-note'))
+      }
+
+      var playlists = { items: [], total: 0 }
+
+      function loadPlaylists(offset) {
+        note('playlists-note', '')
+        request('library.playlists', { offset: offset }).then(function (page) {
+          playlists.items = offset ? playlists.items.concat(page.items) : page.items
+          playlists.total = page.total
+          var rows = $('playlist-rows')
+          rows.textContent = ''
+          playlists.items.forEach(function (item) {
+            var count = typeof item.count === 'number' ? item.count + (item.count === 1 ? ' song' : ' songs') : ''
+            var view = { title: item.name, subtitle: [item.subtitle, count].filter(Boolean).join(' · '), artworkUrl: item.artworkUrl, url: item.url, icon: '#i-list' }
+            rows.appendChild(row(view, function () { play({ contextUri: item.uri }) }))
+          })
+          $('playlists-more').hidden = playlists.items.length >= playlists.total
+          if (!playlists.items.length) note('playlists-note', 'You have no playlists yet.')
+        }, failNote('playlists-note'))
+      }
+
+      // `start` plays on the device; otherwise it keeps playing or paused as it was.
+      function deviceRow(device, label, start) {
+        var item = {
+          title: device.name,
+          subtitle: device.active ? 'Playing here' : device.type,
+          icon: '#i-device',
+          current: device.active,
+          end: device.active ? '' : label
+        }
+        return row(item, function () {
+          if (device.active) return setTab('player')
+          change('player.transfer', { deviceId: device.id, play: Boolean(start || (state && state.status === 'playing')) })
+        })
+      }
+
+      function loadDevices() {
+        note('devices-note', '')
+        request('player.devices').then(function (devices) {
+          var rows = $('device-rows')
+          rows.textContent = ''
+          devices.forEach(function (device) { rows.appendChild(deviceRow(device, 'Switch')) })
+          if (!devices.length) note('devices-note', 'No devices found. Open Spotify on a phone, computer or speaker.')
+        }, failNote('devices-note'))
+      }
+
+      function setTab(next) {
+        tab = next
+        if (next === 'player') return state ? render(state) : poll()
+        show('v-' + next)
+        if (next === 'queue') loadQueue()
+        if (next === 'playlists') loadPlaylists(0)
+        if (next === 'devices') loadDevices()
+        if (next === 'search') $('search-q').focus()
+      }
+
+      // ---------- artwork, polling, commands ----------
 
       function loadArtwork(url) {
         if (url === artworkUrl) return
@@ -385,7 +1141,7 @@
         $('art').classList.remove('on')
         $('backdrop').classList.remove('on')
         if (!url) return
-        orca.plugin.request('player.artwork', { url: url }).then(function (reply) {
+        request('player.artwork', { url: url }).then(function (reply) {
           if (!reply || reply.url !== artworkUrl || !reply.dataUrl) return
           $('art').src = reply.dataUrl
           $('art').classList.add('on')
@@ -394,21 +1150,37 @@
         }, function () {})
       }
 
+      // The next read: the backend's interval for what's showing, sooner when the track ends,
+      // later when Spotify asked to wait.
+      function nextPollMs() {
+        var poll = caps().poll || DEFAULT_CAPS.poll
+        if (document.hidden) return poll.hidden
+        var playing = state && state.status === 'playing'
+        var ms = playing ? poll.playing : poll.paused
+        if (playing && state.track) ms = Math.min(ms, Math.max(500, state.track.durationMs - positionNow() + 500))
+        if (state && state.retryAfterMs) ms = Math.max(ms, state.retryAfterMs)
+        return ms
+      }
+
       function schedule(ms) {
         clearTimeout(timer)
-        timer = setTimeout(poll, ms || (document.hidden ? HIDDEN_POLL_MS : POLL_MS))
+        timer = setTimeout(poll, ms || nextPollMs())
       }
 
       function fail(error) {
         if (error && error.code === 'cancelled') return
-        if (error && error.code === 'rate_limited') return schedule(error.retryAfterMs || POLL_MS * 3)
+        if (error && error.code === 'rate_limited') return schedule(error.retryAfterMs || 3000)
         showMessage('#i-alert', 'Spotify is unavailable', (error && error.message) || String(error), { label: 'Try again', run: poll })
-        schedule(POLL_MS * 5)
+        schedule(5000)
+      }
+
+      function loadInfo() {
+        return request('backend.info').then(function (next) { info = next })
       }
 
       function poll() {
         var seq = ++requestSeq
-        return orca.plugin.request('player.state').then(function (next) {
+        return request('player.state').then(function (next) {
           if (seq > appliedSeq && commandsInFlight === 0) {
             appliedSeq = seq
             render(next)
@@ -426,9 +1198,8 @@
         }
         var seq = ++requestSeq
         commandsInFlight++
-        // Input must be JSON, so leave `value` out rather than send undefined.
         var input = value === undefined ? { cmd: cmd } : { cmd: cmd, value: value }
-        return orca.plugin.request('player.command', input).then(
+        return request('player.command', input).then(
           function (next) {
             commandsInFlight--
             if (seq > appliedSeq) {
@@ -448,6 +1219,21 @@
         s.positionMs = positionNow()
       }
 
+      function switchBackend(backend) {
+        stopWatching()
+        tab = 'player'
+        return request('backend.select', { backend: backend }).then(function (next) {
+          info = next
+          return poll()
+        }, fail)
+      }
+
+      function disconnect() {
+        stopWatching()
+        tab = 'player'
+        request('auth.disconnect').then(loadInfo).then(poll, fail)
+      }
+
       function wire() {
         $('play').addEventListener('click', function () {
           var playing = state && state.status === 'playing'
@@ -465,19 +1251,22 @@
         $('shuffle').addEventListener('click', function () {
           command('toggleShuffle', undefined, function (s) { freezePosition(s); s.shuffle = !s.shuffle })
         })
+        // Steps through the modes the backend has: off → context (→ track) → off.
         $('repeat').addEventListener('click', function () {
-          command('toggleRepeat', undefined, function (s) { freezePosition(s); s.repeat = !s.repeat })
+          var modes = caps().repeatModes || DEFAULT_CAPS.repeatModes
+          var mode = modes[(modes.indexOf(state && state.repeat) + 1) % modes.length]
+          command('setRepeat', mode, function (s) { freezePosition(s); s.repeat = mode })
         })
 
         $('seek').addEventListener('input', function () {
           dragging = true
           setSlider($('seek'), Number($('seek').value))
-          $('pos').textContent = fmt(Number($('seek').value) * 1000)
+          $('pos').textContent = fmt(Number($('seek').value) * caps().seekStepMs)
         })
         $('seek').addEventListener('change', function () {
-          var seconds = Number($('seek').value)
+          var ms = Number($('seek').value) * caps().seekStepMs
           dragging = false
-          command('seek', seconds, function (s) { s.positionMs = seconds * 1000 })
+          command('seek', ms, function (s) { s.positionMs = ms })
         })
 
         $('vol').addEventListener('input', function () { renderVolume(Number($('vol').value)) })
@@ -490,6 +1279,60 @@
           command('setVolume', volume, function (s) { freezePosition(s); s.volume = volume })
         })
 
+        $('open-track').addEventListener('click', function () { openExternal(state && state.track && state.track.url) })
+        $('device-chip').addEventListener('click', function () { setTab('devices') })
+        Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (button) {
+          button.addEventListener('click', function () { setTab(button.dataset.tab) })
+        })
+        $('queue-refresh').addEventListener('click', loadQueue)
+        $('devices-refresh').addEventListener('click', loadDevices)
+        $('playlists-more').addEventListener('click', function () { loadPlaylists(playlists.items.length) })
+        $('search-q').addEventListener('input', function () {
+          clearTimeout(search.timer)
+          search.timer = setTimeout(runSearch, 350)
+        })
+
+        // Setup
+        $('open-dashboard').addEventListener('click', function () { openExternal(DASHBOARD_URL) })
+        $('copy-uri').addEventListener('click', function () {
+          $('redirect-uri').select()
+          var copied = false
+          try { copied = document.execCommand('copy') } catch (error) {}
+          $('copy-uri').textContent = copied ? 'Copied' : /Mac/.test(navigator.platform) ? 'Press ⌘C' : 'Press Ctrl+C'
+          setTimeout(function () { $('copy-uri').textContent = 'Copy' }, 1500)
+        })
+        $('client-id').addEventListener('input', function () {
+          clearTimeout(login.prepare)
+          login.url = null
+          $('connect').disabled = true
+          login.prepare = setTimeout(prepareLogin, 400)
+        })
+        $('connect').addEventListener('click', connect)
+
+        // Footer
+        $('to-webapi').addEventListener('click', function () {
+          if (connection().connected) return switchBackend('webapi')
+          setupWanted = true
+          renderSetup()
+        })
+        $('to-desktop').addEventListener('click', function () {
+          setupWanted = false
+          switchBackend('applescript')
+        })
+        $('disconnect').addEventListener('click', disconnect)
+        // Renew the login without deleting the one that still works.
+        $('reconnect').addEventListener('click', function () {
+          reconnecting = true
+          renderSetup()
+        })
+        $('setup-cancel').addEventListener('click', function () {
+          reconnecting = false
+          stopWatching()
+          stopKeepAlive()
+          render(state)
+        })
+        $('attribution').addEventListener('click', function () { openExternal('https://open.spotify.com') })
+
         document.addEventListener('visibilitychange', function () {
           if (!document.hidden) poll()
         })
@@ -497,7 +1340,7 @@
       }
 
       wire()
-      poll()
+      loadInfo().then(poll, function () { poll() })
     </script>
   </body>
 </html>

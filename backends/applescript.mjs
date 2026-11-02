@@ -1,6 +1,7 @@
 // Spotify desktop on macOS, driven through osascript. Every script checks
 // `application "Spotify" is running` first so nothing here ever launches Spotify.
 import { execFile } from 'node:child_process'
+import { MESSAGES, REPEAT_MODES, SpotifyError, errorState } from '../src/backend.mjs'
 
 const SEP = '\u001f'
 const TIMEOUT_MS = 3000
@@ -31,6 +32,11 @@ const COMMANDS = {
   previous: () => 'previous track',
   toggleShuffle: () => 'set shuffling to not shuffling',
   toggleRepeat: () => 'set repeating to not repeating',
+  // The desktop app only knows on/off: both 'context' and 'track' mean repeating.
+  setRepeat: (mode) => {
+    if (!REPEAT_MODES.includes(mode)) throw new SpotifyError('invalid', `Unknown repeat mode: ${mode}`)
+    return `set repeating to ${mode !== 'off'}`
+  },
   setVolume: (value) => {
     const volume = Math.round(Number(value))
     if (!Number.isFinite(volume) || volume < 0 || volume > 100) {
@@ -38,32 +44,32 @@ const COMMANDS = {
     }
     return `set sound volume to ${volume}`
   },
-  // Whole seconds: AppleScript reads a decimal point by the system locale.
+  // Milliseconds in, whole seconds out: AppleScript reads a decimal point by the system locale.
   seek: (value) => {
-    const seconds = Math.round(Number(value))
+    const seconds = Math.round(Number(value) / 1000)
     if (!Number.isFinite(seconds) || seconds < 0) {
-      throw new SpotifyError('invalid', 'Position must be a number of seconds.')
+      throw new SpotifyError('invalid', 'Position must be a number of milliseconds.')
     }
     return `set player position to ${seconds}`
   }
 }
 
-export const COMMAND_NAMES = Object.freeze([...Object.keys(COMMANDS), 'open'])
-
-export class SpotifyError extends Error {
-  constructor(kind, message) {
-    super(message)
-    this.kind = kind
-  }
-}
-
-export const MESSAGES = Object.freeze({
-  unsupported: 'Now Playing controls the Spotify desktop app, which it can only reach on macOS.',
-  closed: 'Spotify is not open. Open the Spotify desktop app and try again.',
-  permission:
-    'Orca is not allowed to control Spotify. Open System Settings → Privacy & Security → Automation, turn on Spotify under Orca, then try again.',
-  timeout: 'Spotify did not answer within 3 seconds.'
+export const CAPABILITIES = Object.freeze({
+  repeatModes: ['off', 'context'],
+  seekStepMs: 1000,
+  volume: true,
+  open: true,
+  devices: false,
+  queue: false,
+  search: false,
+  playlists: false,
+  library: false,
+  needsAuth: false,
+  poll: { playing: 1000, paused: 1000, hidden: 4000 }
 })
+
+// Spotify applies an Apple Event a moment after it returns; re-read quickly a few times.
+const SETTLE = Object.freeze({ tries: 6, stepMs: 80 })
 
 export function parseState(output) {
   const fields = output.replace(/\r?\n$/, '').split(SEP)
@@ -73,7 +79,7 @@ export function parseState(output) {
     status: state === 'playing' || state === 'paused' ? state : 'stopped',
     volume: Number(volume),
     shuffle: shuffle === 'true',
-    repeat: repeat === 'true'
+    repeat: repeat === 'true' ? 'context' : 'off'
   }
   if (title === undefined) return { ...base, track: null }
   return {
@@ -90,8 +96,8 @@ export function parseState(output) {
   }
 }
 
-// Maps an execFile failure to the cases the UI explains to the user.
-export function classifyError(error) {
+// Maps an osascript failure to the cases the UI explains to the user.
+export function classifyOsascriptError(error) {
   if (error instanceof SpotifyError) return error
   if (error?.killed || error?.signal === 'SIGTERM') return new SpotifyError('timeout', MESSAGES.timeout)
   const code = /\((-?\d+)\)\s*$/m.exec(String(error?.stderr ?? error?.message ?? ''))?.[1]
@@ -99,11 +105,6 @@ export function classifyError(error) {
   if (code === '-600') return new SpotifyError('closed', MESSAGES.closed)
   const detail = String(error?.stderr || error?.message || error).trim()
   return new SpotifyError('error', `Spotify could not be controlled: ${detail}`)
-}
-
-export function errorState(error) {
-  const { kind, message } = classifyError(error)
-  return { status: kind === 'closed' ? 'closed' : kind === 'permission' ? 'no-permission' : 'error', message }
 }
 
 export function createAppleScriptBackend({ exec = execFile, platform = process.platform } = {}) {
@@ -120,12 +121,16 @@ export function createAppleScriptBackend({ exec = execFile, platform = process.p
   }
 
   return {
+    id: 'applescript',
+    capabilities: CAPABILITIES,
+    settle: SETTLE,
+
     async getState() {
       if (platform !== 'darwin') return { status: 'unsupported', message: MESSAGES.unsupported }
       try {
         return parseState(await osa(STATE_SCRIPT))
       } catch (error) {
-        return errorState(error)
+        return errorState(classifyOsascriptError(error))
       }
     },
 
@@ -135,7 +140,7 @@ export function createAppleScriptBackend({ exec = execFile, platform = process.p
       ensureMac()
       if (name === 'open') {
         await run('/usr/bin/open', ['-a', 'Spotify']).catch((error) => {
-          throw classifyError(error)
+          throw classifyOsascriptError(error)
         })
         return true
       }
@@ -150,7 +155,7 @@ export function createAppleScriptBackend({ exec = execFile, platform = process.p
         ])
         return out.trim() !== 'closed'
       } catch (error) {
-        throw classifyError(error)
+        throw classifyOsascriptError(error)
       }
     }
   }

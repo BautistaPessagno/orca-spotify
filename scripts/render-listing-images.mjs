@@ -50,17 +50,25 @@ const track = (title, artist, album, minutes, art) => ({
 })
 
 const STATES = {
-  playing: { status: 'playing', volume: 72, shuffle: true, repeat: false, positionMs: 83_000, track: track('Low Tide Lanterns', 'Harbor Lights', 'Saltwater Hours', 3.9, DUSK) },
-  paused: { status: 'paused', volume: 40, shuffle: false, repeat: true, positionMs: 151_000, track: track('Glass Weather', 'The Quiet Coast', 'North Facing', 4.3, TIDE) },
+  playing: { status: 'playing', volume: 72, shuffle: true, repeat: 'off', positionMs: 83_000, track: track('Low Tide Lanterns', 'Harbor Lights', 'Saltwater Hours', 3.9, DUSK) },
+  paused: { status: 'paused', volume: 40, shuffle: false, repeat: 'context', positionMs: 151_000, track: track('Glass Weather', 'The Quiet Coast', 'North Facing', 4.3, TIDE) },
   closed: { status: 'closed', message: 'Spotify is not open. Open the Spotify desktop app and try again.' },
   'no-permission': {
     status: 'no-permission',
     message: 'Orca is not allowed to control Spotify. Open System Settings → Privacy & Security → Automation, turn on Spotify under Orca, then try again.'
   },
-  stopped: { status: 'stopped', volume: 60, shuffle: false, repeat: false, track: null }
+  stopped: { status: 'stopped', volume: 60, shuffle: false, repeat: 'off', track: null }
 }
 
 const PANEL = readFileSync(join(ROOT, 'panel/index.html'), 'utf8')
+
+// What backend.info answers for the desktop app: the listing shows the AppleScript player.
+const INFO = {
+  id: 'applescript',
+  capabilities: { repeatModes: ['off', 'context'], seekStepMs: 1000, poll: { playing: 1000, paused: 1000, hidden: 4000 } },
+  available: ['applescript'],
+  connection: { connected: false }
+}
 
 // The panel document as Orca would serve it: tokens injected, window.orca answering from `state`.
 function panelDoc(stateName, theme) {
@@ -72,6 +80,7 @@ function panelDoc(stateName, theme) {
     window.orca = Object.freeze({ plugin: { request: function (name, input) {
       var state = ${JSON.stringify(state)}
       if (name === 'player.artwork') return Promise.resolve({ url: input.url, dataUrl: input.url })
+      if (name === 'backend.info') return Promise.resolve(${JSON.stringify(INFO)})
       return Promise.resolve(JSON.parse(JSON.stringify(state)))
     } } })
   </script>`

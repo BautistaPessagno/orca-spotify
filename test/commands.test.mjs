@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { SpotifyError } from '../backends/applescript.mjs'
+import { SpotifyError } from '../src/backend.mjs'
 import { createCommands, describe } from '../src/commands.mjs'
 
 const playing = { status: 'playing', shuffle: true, track: { title: 'Song', artist: 'Artist' } }
@@ -45,4 +45,14 @@ test('a command failure is returned as its explanation', async () => {
 
 test('toggleShuffle reports the resulting mode', async () => {
   assert.equal(await createCommands(fakeSpotify(), noDelay).toggleShuffle(), 'Shuffle on')
+})
+
+test('with no player to send to, the backend\'s own explanation is returned', async () => {
+  const state = { status: 'no-device', message: 'No Spotify device is active. Open Spotify on any device.' }
+  assert.equal(await createCommands(fakeSpotify({ state, ran: false }), noDelay).next(), state.message)
+})
+
+test('a Web API account that is not connected points to the panel', async () => {
+  const fail = new SpotifyError('unauthenticated', 'Open the Now Playing panel to connect your Spotify account.')
+  assert.match(await createCommands(fakeSpotify({ fail }), noDelay).playpause(), /Now Playing panel/)
 })

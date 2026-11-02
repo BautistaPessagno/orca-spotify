@@ -6,13 +6,14 @@
   "publisher": "bautistapessagno",
   "name": "Now Playing",
   "version": "0.2.1",
-  "description": "Control the Spotify desktop app on your Mac from Orca's command palette and shortcuts. Not affiliated with Spotify.",
+  "description": "Control Spotify from Orca: the desktop app on macOS, or any device through the Spotify Web API. Not affiliated with Spotify.",
   "author": { "name": "Bautista Pessagno", "url": "https://github.com/BautistaPessagno" },
   "repository": "https://github.com/BautistaPessagno/orca-spotify",
   "license": "MIT",
   "engines": { "orca": ">=1.4.246" },
   "pluginApi": 1,
   "main": "worker.mjs",
+  "capabilities": [{ "kind": "secrets:own" }, { "kind": "settings:own" }],
   "cover": { "path": "images/cover.png", "alt": "Now Playing: the sidebar player in Orca next to its keyboard shortcuts" },
   "screenshots": [
     { "path": "images/player-dark.png", "alt": "The Now Playing panel playing a track in Orca's dark theme", "caption": "The sidebar player" },
@@ -34,6 +35,34 @@
     ],
     "panels": [
       { "id": "player", "title": "Now Playing", "icon": "play", "entry": "panel/index.html" }
+    ],
+    "settings": [
+      {
+        "key": "backend",
+        "title": "Backend",
+        "description": "How Now Playing reaches Spotify. Auto uses the desktop app on macOS and the Spotify Web API elsewhere.",
+        "type": "string",
+        "default": "auto",
+        "enum": ["auto", "applescript", "webapi"],
+        "enumLabels": ["Auto", "Spotify desktop app (macOS)", "Spotify Web API"]
+      },
+      {
+        "key": "clientId",
+        "title": "Spotify Client ID",
+        "description": "From the app you created at developer.spotify.com/dashboard. Needed for the Web API.",
+        "type": "string",
+        "maxLength": 64,
+        "placeholder": "Client ID from developer.spotify.com"
+      },
+      {
+        "key": "redirectPort",
+        "title": "Redirect port",
+        "description": "Port of the login redirect, http://127.0.0.1:<port>/callback. Change it only if 43117 is taken, and add the new address to your Spotify app.",
+        "type": "integer",
+        "default": 43117,
+        "minimum": 1024,
+        "maximum": 65535
+      }
     ]
   }
 }

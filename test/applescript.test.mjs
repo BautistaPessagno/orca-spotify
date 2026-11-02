@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { classifyError, createAppleScriptBackend, parseState } from '../backends/applescript.mjs'
+import { classifyOsascriptError, createAppleScriptBackend, parseState } from '../backends/applescript.mjs'
 
 const SEP = '\u001f'
 const line = (...fields) => fields.join(SEP) + '\n'
@@ -25,7 +25,7 @@ test('parseState reads a playing track', () => {
     status: 'playing',
     volume: 64,
     shuffle: true,
-    repeat: false,
+    repeat: 'off',
     track: { title: 'Song', artist: 'Artist', album: 'Album', uri: 'spotify:track:1', durationMs: 228000, artworkUrl: 'https://i.scdn.co/image/x' },
     positionMs: 72345
   })
@@ -36,7 +36,7 @@ test('parseState handles stopped and closed', () => {
     status: 'stopped',
     volume: 50,
     shuffle: false,
-    repeat: true,
+    repeat: 'context',
     track: null
   })
   assert.equal(parseState('closed\n').status, 'closed')
@@ -48,17 +48,17 @@ test('parseState keeps an empty artwork url as null', () => {
   assert.equal(state.track.artworkUrl, null)
 })
 
-test('classifyError maps the macOS Automation denial', () => {
+test('classifyOsascriptError maps the macOS Automation denial', () => {
   const error = Object.assign(new Error('Command failed'), {
     stderr: '0:12: execution error: Not authorized to send Apple events to Spotify. (-1743)\n'
   })
-  assert.equal(classifyError(error).kind, 'permission')
-  assert.match(classifyError(error).message, /Automation/)
+  assert.equal(classifyOsascriptError(error).kind, 'permission')
+  assert.match(classifyOsascriptError(error).message, /Automation/)
 })
 
-test('classifyError maps timeouts and unknown failures', () => {
-  assert.equal(classifyError(Object.assign(new Error('x'), { killed: true, signal: 'SIGTERM' })).kind, 'timeout')
-  const other = classifyError(Object.assign(new Error('x'), { stderr: 'execution error: boom (-2700)' }))
+test('classifyOsascriptError maps timeouts and unknown failures', () => {
+  assert.equal(classifyOsascriptError(Object.assign(new Error('x'), { killed: true, signal: 'SIGTERM' })).kind, 'timeout')
+  const other = classifyOsascriptError(Object.assign(new Error('x'), { stderr: 'execution error: boom (-2700)' }))
   assert.equal(other.kind, 'error')
   assert.match(other.message, /boom/)
 })
@@ -101,4 +101,40 @@ test('open launches Spotify only when asked', async () => {
   const { exec, calls } = fakeExec('')
   await createAppleScriptBackend({ exec, platform: 'darwin' }).command('open')
   assert.deepEqual(calls[0], { file: '/usr/bin/open', args: ['-a', 'Spotify'] })
+})
+
+test('describes itself as a backend', () => {
+  const spotify = createAppleScriptBackend({ exec: fakeExec().exec, platform: 'darwin' })
+  assert.equal(spotify.id, 'applescript')
+  assert.deepEqual(spotify.capabilities.repeatModes, ['off', 'context'])
+  assert.equal(spotify.capabilities.seekStepMs, 1000)
+  assert.equal(spotify.capabilities.open, true)
+  assert.equal(spotify.capabilities.search, false)
+  assert.equal(spotify.capabilities.needsAuth, false)
+  assert.deepEqual(spotify.settle, { tries: 6, stepMs: 80 })
+})
+
+test('setRepeat turns any mode but off into repeating', async () => {
+  const { exec, calls } = fakeExec('ok\n', 'ok\n')
+  const spotify = createAppleScriptBackend({ exec, platform: 'darwin' })
+  await spotify.command('setRepeat', 'track')
+  await spotify.command('setRepeat', 'off')
+  assert.ok(calls[0].args.includes('tell application "Spotify" to set repeating to true'))
+  assert.ok(calls[1].args.includes('tell application "Spotify" to set repeating to false'))
+  await assert.rejects(spotify.command('setRepeat', 'sometimes'), { kind: 'invalid' })
+})
+
+test('seek takes milliseconds and sends whole seconds', async () => {
+  const { exec, calls } = fakeExec('ok\n')
+  await createAppleScriptBackend({ exec, platform: 'darwin' }).command('seek', 61_600)
+  assert.ok(calls[0].args.includes('tell application "Spotify" to set player position to 62'))
+})
+
+test('every shared command name is one the desktop app knows', async () => {
+  const { COMMAND_NAMES } = await import('../src/backend.mjs')
+  const values = { setRepeat: 'off', setVolume: 10, seek: 0 }
+  for (const name of COMMAND_NAMES) {
+    const { exec } = fakeExec('ok\n')
+    assert.equal(await createAppleScriptBackend({ exec, platform: 'darwin' }).command(name, values[name]), true, name)
+  }
 })
