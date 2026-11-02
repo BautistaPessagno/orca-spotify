@@ -20,7 +20,7 @@ or with the links at the bottom of the panel.
 Needs Orca 1.4.246 or newer.
 
 1. Orca → Settings → Plugins → **Turn on plugins**.
-2. **Install plugin** → Git URL → `https://github.com/BautistaPessagno/orca-spotify#v0.3.0`.
+2. **Install plugin** → Git URL → `https://github.com/BautistaPessagno/orca-spotify#v0.3.1`.
 3. Review what it asks for and click **Enable**. It asks for its own settings (the backend and
    your Client ID) and its own encrypted secrets (the Spotify login).
 

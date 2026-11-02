@@ -145,3 +145,13 @@ test('search can look for podcasts too', async () => {
   assert.equal(results.shows.items[0].kind, 'show')
   assert.equal(results.episodes.items[0].uri, 'spotify:episode:e')
 })
+
+test('a Spotify-made playlist (This Is, Daily Mix) opens as a page Spotify keeps closed', async () => {
+  const { backend } = setup({ 'GET /playlists/37i9dQZF1DZ06evO1': reply(404, { error: { status: 404, message: 'Resource not found' } }) })
+  const page = await backend.playlist('spotify:playlist:37i9dQZF1DZ06evO1')
+  assert.equal(page.closed, true)
+  assert.equal(page.tracks, null)
+  assert.equal(page.playable, true)
+  assert.equal(page.uri, 'spotify:playlist:37i9dQZF1DZ06evO1')
+  assert.equal(page.url, 'https://open.spotify.com/playlist/37i9dQZF1DZ06evO1')
+})

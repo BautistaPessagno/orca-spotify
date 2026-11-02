@@ -233,7 +233,16 @@ export function createLibrary(client) {
 
     // Spotify lists a playlist's songs only for your own playlists; others show their header.
     async playlist(uri) {
-      const body = await client.request('GET', '/playlists/' + idOf(uri))
+      let body
+      try {
+        body = await client.request('GET', '/playlists/' + idOf(uri))
+      } catch (error) {
+        // Playlists Spotify makes (This Is, Daily Mix, Discover Weekly) are closed to new apps:
+        // the panel shows what it already knows about it, with Play and Open in Spotify.
+        if (error?.kind !== 'not-found') throw error
+        const url = `https://open.spotify.com/playlist/${idOf(uri)}`
+        return { kind: 'playlist', name: null, subtitle: 'Spotify', uri, url, artworkUrl: null, count: null, playable: true, closed: true, tracks: null }
+      }
       const list = playlistItems(body)
       const entries = Array.isArray(list?.items) ? list.items : null
       return {

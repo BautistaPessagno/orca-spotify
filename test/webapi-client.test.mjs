@@ -109,3 +109,8 @@ test('a login without a permission Spotify needs asks for a reconnect', async ()
   const { client } = setup([reply(403, { error: { status: 403, message: 'Insufficient client scope' } })])
   await assert.rejects(client.request('GET', '/me/tracks'), { kind: 'scope', message: /Reconnect/ })
 })
+
+test('something Spotify does not show this app is a not-found', async () => {
+  const { client } = setup([reply(404, { error: { status: 404, message: 'Resource not found' } })])
+  await assert.rejects(client.request('GET', '/playlists/37i9dQZF1DXcBWIGoYBM5M'), { kind: 'not-found' })
+})

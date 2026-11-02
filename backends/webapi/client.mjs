@@ -90,6 +90,8 @@ export function createClient({ auth, fetchImpl = globalThis.fetch, now = Date.no
       if (/restriction/i.test(detail ?? '')) throw new SpotifyError('error', `Spotify refused: ${detail}`)
       throw new SpotifyError('forbidden', MESSAGES.premium)
     }
+    // Spotify answers 404 for what it keeps from new apps, such as its own playlists.
+    if (response.status === 404) throw new SpotifyError('not-found', `Spotify answered 404${detail ? `: ${detail}` : ''}`)
     throw new SpotifyError('error', `Spotify answered ${response.status}${detail ? `: ${detail}` : ''}`)
   }
 

@@ -1649,7 +1649,7 @@
         var sub = item.kind === 'album' ? ['Album', page.subtitle || item.subtitle, page.year || item.year, count]
           : item.kind === 'artist' ? ['Artist']
           : item.kind === 'collection' ? ['Your library', songsCount(page.count)]
-          : ['Playlist', page.subtitle || item.subtitle, songsCount(page.count)]
+          : ['Playlist', page.subtitle || item.subtitle, songsCount(typeof page.count === 'number' ? page.count : item.count)]
         $('detail-sub').textContent = sub.filter(Boolean).join(' · ')
         $('detail-heart').hidden = item.kind !== 'album'
         $('detail-open').hidden = !(page.url || item.url)
@@ -1670,7 +1670,9 @@
           ;(page.tracks || []).forEach(function (track) {
             rows.appendChild(row(trackItem(track), function () { play({ contextUri: context, offsetUri: track.uri }) }, enqueueButton(track)))
           })
-          if (detail.page && page.tracks === null) {
+          if (detail.page && page.closed) {
+            note('detail-note', 'Spotify keeps the playlists it makes (This Is, Daily Mix, Discover Weekly) closed to apps like this one. Press play to listen, or open it in Spotify.')
+          } else if (detail.page && page.tracks === null) {
             note('detail-note', 'Spotify only lists the songs of your own playlists here. Press play to listen to it.')
           }
         }
