@@ -5,7 +5,7 @@
   "id": "now-playing",
   "publisher": "bautistapessagno",
   "name": "Now Playing",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Control the Spotify desktop app on your Mac from Orca's command palette and shortcuts. Not affiliated with Spotify.",
   "author": { "name": "Bautista Pessagno", "url": "https://github.com/BautistaPessagno" },
   "repository": "https://github.com/BautistaPessagno/orca-spotify",
@@ -13,6 +13,12 @@
   "engines": { "orca": ">=1.4.246" },
   "pluginApi": 1,
   "main": "worker.mjs",
+  "cover": { "path": "images/cover.png", "alt": "Now Playing: the sidebar player in Orca next to its keyboard shortcuts" },
+  "screenshots": [
+    { "path": "images/player-dark.png", "alt": "The Now Playing panel playing a track in Orca's dark theme", "caption": "The sidebar player" },
+    { "path": "images/player-light.png", "alt": "The Now Playing panel, paused, in Orca's light theme", "caption": "Follows your Orca theme" },
+    { "path": "images/states.png", "alt": "The panel's messages for Spotify closed, missing macOS permission and nothing playing", "caption": "Tells you what to do when something is off" }
+  ],
   "contributes": {
     "commands": [
       { "id": "playpause", "title": "Spotify: Play / Pause" },

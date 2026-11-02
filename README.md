@@ -9,7 +9,7 @@ setup, API keys or Premium needed. Not affiliated with Spotify.
 Needs Orca 1.4.246 or newer, macOS, and the Spotify desktop app.
 
 1. Orca → Settings → Plugins → **Turn on plugins**.
-2. **Install plugin** → Git URL → `https://github.com/BautistaPessagno/orca-spotify#v0.2.0`.
+2. **Install plugin** → Git URL → `https://github.com/BautistaPessagno/orca-spotify#v0.2.1`.
 3. Review what it asks for and click **Enable**.
 4. The first time you use it, macOS asks whether Orca may control Spotify. Allow it.
 
@@ -56,6 +56,8 @@ Layout:
 - `src/panel-protocol.mjs`: the handlers the panel calls.
 - `src/settle.mjs`: waits for Spotify to apply a command before reading its state.
 - `panel/index.html`: the sidebar player.
+- `images/`: the plugin directory's cover and screenshots. `node scripts/render-listing-images.mjs`
+  renders them from the real panel with a demo track (needs Google Chrome, or set `CHROME`).
 
 ## License
 
