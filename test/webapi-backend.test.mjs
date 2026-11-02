@@ -263,3 +263,9 @@ test('every shared command name is one the Web API backend knows', async () => {
     assert.equal(await backend.command(name, values[name]), true, name)
   }
 })
+
+test('the state says what the track is playing from', async () => {
+  const context = { type: 'playlist', uri: 'spotify:playlist:p1', external_urls: { spotify: 'u' } }
+  const state = await setup({ 'GET /me/player': reply(200, playback({ context })) }).backend.getState()
+  assert.deepEqual(state.context, { type: 'playlist', uri: 'spotify:playlist:p1' })
+})

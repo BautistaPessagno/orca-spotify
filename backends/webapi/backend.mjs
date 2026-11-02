@@ -32,6 +32,8 @@ export function toState(raw) {
     track
   }
   if (track) state.positionMs = raw.progress_ms ?? 0
+  // What the track plays from (a playlist, album or artist), for the panel's "Playing from".
+  if (raw.context?.uri) state.context = { type: raw.context.type, uri: raw.context.uri }
   if (raw.device) {
     state.device = {
       id: raw.device.id,
