@@ -9,7 +9,7 @@ setup, API keys or Premium needed. Not affiliated with Spotify.
 Needs Orca 1.4.246 or newer, macOS, and the Spotify desktop app.
 
 1. Orca → Settings → Plugins → **Turn on plugins**.
-2. **Install plugin** → Git URL → `https://github.com/BautistaPessagno/orca-spotify#v0.1.0`.
+2. **Install plugin** → Git URL → `https://github.com/BautistaPessagno/orca-spotify#v0.2.0`.
 3. Review what it asks for and click **Enable**.
 4. The first time you use it, macOS asks whether Orca may control Spotify. Allow it.
 

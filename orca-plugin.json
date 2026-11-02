@@ -5,7 +5,7 @@
   "id": "now-playing",
   "publisher": "bautistapessagno",
   "name": "Now Playing",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Control the Spotify desktop app on your Mac from Orca's command palette and shortcuts. Not affiliated with Spotify.",
   "author": { "name": "Bautista Pessagno", "url": "https://github.com/BautistaPessagno" },
   "repository": "https://github.com/BautistaPessagno/orca-spotify",
