@@ -660,6 +660,126 @@
       .web .btn { background: #ffffff; color: #000000; }
       .web .footer { padding: 4px 16px 12px; }
 
+      /* ---------- the Spotify / Apple Music switch ----------
+         A two-way segmented control on its own line at the top of the footer. It takes each look's
+         colors: Orca's for the desktop app, Spotify's green under html.web, Apple's below. */
+      .switch-row { width: 100%; display: flex; justify-content: center; padding-bottom: 2px; }
+      .service-switch { display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; background: var(--hover); }
+      .service-switch button {
+        border: 0;
+        border-radius: 999px;
+        padding: 3px 11px;
+        background: transparent;
+        color: var(--muted);
+        font-size: 11.5px;
+        font-weight: 600;
+      }
+      .service-switch button:hover:not(:disabled) { color: var(--fg); }
+      .service-switch button[aria-checked='true'] { background: var(--fg); color: var(--bg); cursor: default; }
+      .service-switch button:disabled { opacity: 0.45; cursor: default; }
+      .service-switch button:focus-visible { outline: 2px solid var(--orca-ring, var(--fg)); outline-offset: 1px; }
+      .web .service-switch { background: #2a2a2a; }
+      .web .service-switch button { color: #ffffff; }
+      .web .service-switch button[aria-checked='true'] { background: var(--accent); color: #000000; }
+
+      /* ---------- Apple Music: the Music app's look ----------
+         html[data-service='applemusic'] is set while Apple Music is selected. It re-points the
+         panel's tokens and restyles the player's parts; the markup is the same one. Dark unless
+         Orca's theme class says light. Spotify's looks above never see this attribute. */
+      html[data-service='applemusic'] {
+        --bg: #1e1e1e;
+        --fg: #f5f5f7;
+        --muted: #98989f;
+        --hover: rgba(255, 255, 255, 0.08);
+        --accent: #fc3c44;
+        --on: var(--accent);
+        --track: rgba(255, 255, 255, 0.16);
+        --line: rgba(255, 255, 255, 0.12);
+        --radius: 9px;
+        --am-fill: rgba(255, 255, 255, 0.6);
+        --am-tint: color-mix(in srgb, var(--accent) 18%, transparent);
+        --am-segment: rgba(118, 118, 128, 0.24);
+        --am-raised: #636366;
+        --am-shadow: 0 18px 40px -14px rgba(0, 0, 0, 0.75), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+      }
+      html.light[data-service='applemusic'] {
+        --bg: #ffffff;
+        --fg: #1d1d1f;
+        --muted: #86868b;
+        --hover: rgba(0, 0, 0, 0.05);
+        --accent: #fa2d48;
+        --track: rgba(0, 0, 0, 0.1);
+        --line: rgba(0, 0, 0, 0.1);
+        --am-fill: rgba(0, 0, 0, 0.45);
+        --am-tint: color-mix(in srgb, var(--accent) 12%, transparent);
+        --am-segment: rgba(118, 118, 128, 0.12);
+        --am-raised: #ffffff;
+        --am-shadow: 0 16px 34px -16px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+      }
+      html[data-service='applemusic'] body {
+        background: var(--bg);
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
+        letter-spacing: -0.01em;
+      }
+      [data-service='applemusic'] .player { padding: 16px 20px 18px; gap: 16px; }
+      [data-service='applemusic'] .backdrop.on { opacity: 0.4; }
+      html.light[data-service='applemusic'] .backdrop.on { opacity: 0.3; }
+      [data-service='applemusic'] .eyebrow { letter-spacing: 0; text-transform: none; font-size: 12px; font-weight: 600; color: var(--muted); }
+      [data-service='applemusic'] .playing .eyebrow { color: var(--accent); }
+      [data-service='applemusic'] .cover {
+        border-radius: var(--radius);
+        box-shadow: var(--am-shadow);
+        /* The Music app shrinks the cover on pause and springs it back on play. */
+        transition: transform 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+      }
+      [data-service='applemusic'] .paused .cover { transform: scale(0.88); }
+      [data-service='applemusic'] .cover .ph { opacity: 0.35; }
+      [data-service='applemusic'] .meta { gap: 2px; }
+      [data-service='applemusic'] .meta .title { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
+      [data-service='applemusic'] .meta .sub { font-size: 14px; color: var(--accent); }
+      [data-service='applemusic'] .slider::-webkit-slider-runnable-track {
+        height: 6px;
+        border-radius: 3px;
+        background: linear-gradient(to right, var(--am-fill) var(--val), var(--track) var(--val));
+      }
+      [data-service='applemusic'] .slider::-webkit-slider-thumb {
+        width: 14px;
+        height: 14px;
+        margin-top: -4px;
+        background: #ffffff;
+        box-shadow: 0 0.5px 4px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(0, 0, 0, 0.12);
+      }
+      [data-service='applemusic'] .times { font-size: 11px; font-weight: 500; }
+      [data-service='applemusic'] .controls { padding: 0 6px; }
+      [data-service='applemusic'] .ctl:hover { background: transparent; opacity: 0.7; }
+      [data-service='applemusic'] .ctl svg { width: 26px; height: 26px; }
+      /* Play is a bare glyph, as in the Music app, not a filled circle. */
+      [data-service='applemusic'] .ctl.main { width: 56px; height: 56px; background: transparent; color: var(--fg); }
+      [data-service='applemusic'] .ctl.main:hover { background: transparent; transform: none; }
+      [data-service='applemusic'] .ctl.main svg { width: 40px; height: 40px; }
+      /* Shuffle and repeat light up as a tinted rounded square instead of a dot. */
+      [data-service='applemusic'] .ctl.toggle { width: 30px; height: 30px; border-radius: 7px; }
+      [data-service='applemusic'] .ctl.toggle svg { width: 16px; height: 16px; }
+      [data-service='applemusic'] .ctl.toggle:hover { opacity: 1; background: var(--hover); }
+      [data-service='applemusic'] .ctl.toggle[aria-pressed='true'] { color: var(--accent); background: var(--am-tint); }
+      [data-service='applemusic'] .ctl.toggle[aria-pressed='true']::after { display: none; }
+      [data-service='applemusic'] .volume { gap: 10px; padding: 0 2px; }
+      [data-service='applemusic'] .icon-btn { border-radius: 7px; }
+      [data-service='applemusic'] .link { color: var(--accent); text-decoration: none; }
+      [data-service='applemusic'] .link:hover { text-decoration: underline; }
+      [data-service='applemusic'] .empty .badge { width: 56px; height: 56px; border-radius: 14px; background: var(--am-tint); color: var(--accent); }
+      [data-service='applemusic'] .empty b { font-size: 15px; letter-spacing: -0.01em; }
+      [data-service='applemusic'] .btn { border-radius: 8px; padding: 6px 16px; background: var(--accent); color: #ffffff; font-size: 13px; }
+      [data-service='applemusic'] .footer { gap: 6px 10px; }
+      /* The switch as a macOS segmented control. */
+      [data-service='applemusic'] .service-switch { border-radius: 8px; background: var(--am-segment); }
+      [data-service='applemusic'] .service-switch button { border-radius: 6px; padding: 3px 12px; color: var(--fg); font-weight: 500; }
+      [data-service='applemusic'] .service-switch button[aria-checked='true'] {
+        background: var(--am-raised);
+        color: var(--fg);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+      }
+
       @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after { animation: none !important; transition: none !important; }
       }
@@ -899,12 +1019,20 @@
     </section>
 
     <footer class="footer" id="footer" hidden>
+      <!-- Which service the panel shows. It sits in the footer with the Spotify backend links, on
+           every view the footer shows: the player, every message and the setup. -->
+      <div class="switch-row">
+        <div class="service-switch" id="service-switch" role="radiogroup" aria-label="Music service">
+          <button type="button" role="radio" data-pick="spotify" aria-checked="true">Spotify</button>
+          <button type="button" role="radio" data-pick="applemusic" aria-checked="false">Apple Music</button>
+        </div>
+      </div>
       <div class="warn" id="expiry-warning" hidden>
         Spotify ends this login soon (every 6 months). <button type="button" class="link" id="reconnect">Reconnect</button>
       </div>
       <button type="button" class="link attribution" id="attribution" hidden><svg><use href="#i-spotify" /></svg>Content from Spotify</button>
-      <button type="button" class="link agents" id="agents-enable" hidden title="Agents run ~/.orca-now-playing/now-playing; this also installs its skill for Claude Code and Codex"><svg><use href="#i-terminal" /></svg>Let your coding agents control Spotify</button>
-      <span class="agents" id="agents-on" hidden title="Agents run ~/.orca-now-playing/now-playing. Turn it off under Settings → Plugins → Now Playing."><svg><use href="#i-terminal" /></svg>Your agents can control Spotify</span>
+      <button type="button" class="link agents" id="agents-enable" hidden title="Agents run ~/.orca-now-playing/now-playing; this also installs its skill for Claude Code and Codex"><svg><use href="#i-terminal" /></svg><span id="agents-enable-text">Let your coding agents control Spotify</span></button>
+      <span class="agents" id="agents-on" hidden title="Agents run ~/.orca-now-playing/now-playing. Turn it off under Settings → Plugins → Now Playing."><svg><use href="#i-terminal" /></svg><span id="agents-on-text">Your agents can control Spotify</span></span>
       <span id="connection-age" hidden></span>
       <button type="button" class="link" id="disconnect" hidden>Disconnect</button>
       <button type="button" class="link" id="to-webapi" hidden>Search, queue and devices → use the Spotify Web API</button>
@@ -975,6 +1103,36 @@
         return Boolean(info && info.id === 'webapi')
       }
 
+      function isMusic() {
+        return Boolean(info && info.id === 'applemusic')
+      }
+
+      // What the panel says about the app it drives. Spotify's sentences are the ones it always had.
+      var SERVICE_TEXT = {
+        spotify: {
+          name: 'Spotify',
+          closedTitle: 'Spotify is not open',
+          closedBody: 'Open the Spotify desktop app and this panel updates by itself.',
+          open: 'Open Spotify',
+          permission: 'Orca can’t control Spotify',
+          unavailable: 'Spotify is unavailable',
+          idle: 'Start something in Spotify and it shows up here.'
+        },
+        applemusic: {
+          name: 'Apple Music',
+          closedTitle: 'Music is not open',
+          closedBody: 'Open the Music app and this panel updates by itself.',
+          open: 'Open Music',
+          permission: 'Orca can’t control Music',
+          unavailable: 'Apple Music is unavailable',
+          idle: 'Start something in Music and it shows up here.'
+        }
+      }
+
+      function words() {
+        return SERVICE_TEXT[isMusic() ? 'applemusic' : 'spotify']
+      }
+
       function connection() {
         return (info && info.connection) || {}
       }
@@ -1023,8 +1181,11 @@
         var conn = connection()
         var setup = view === 'v-setup'
         var connected = web && conn.connected && !setup
-        // The Web API gets the Spotify look; so does its setup, which leads there.
-        document.documentElement.classList.toggle('web', web || setup)
+        // The Web API gets the Spotify look; so does its setup, which leads there. Apple Music gets
+        // the Music app's look from one attribute that re-points the tokens.
+        var music = isMusic()
+        document.documentElement.dataset.service = music ? 'applemusic' : 'spotify'
+        document.documentElement.classList.toggle('web', !music && (web || setup))
         var idle = view === 'v-message' && state && !state.track && ['playing', 'paused', 'stopped'].indexOf(state.status) !== -1
         $('dock').hidden = !(connected && (DOCKED[view] || idle))
         document.documentElement.classList.toggle('docked', !$('dock').hidden)
@@ -1035,8 +1196,9 @@
         })
         renderMini()
         var macOS = Boolean(info && info.available && info.available.indexOf('applescript') !== -1)
-        $('to-webapi').hidden = !(macOS && !web && !setup)
-        $('to-desktop').hidden = !(macOS && (web || setupWanted))
+        $('to-webapi').hidden = !(macOS && !music && !web && !setup)
+        $('to-desktop').hidden = !(macOS && !music && (web || setupWanted))
+        renderSwitch(music)
         $('disconnect').hidden = !connected
         $('connection-age').hidden = !(connected && conn.authorizedAt)
         if (conn.authorizedAt) $('connection-age').textContent = 'Connected ' + ago(conn.authorizedAt)
@@ -1045,9 +1207,26 @@
         var agentsOn = Boolean(agents && agents.access && agents.bridge && agents.skill && agents.skill.length)
         $('agents-enable').hidden = !agents || agentsOn || setup
         $('agents-on').hidden = !agentsOn || setup
+        $('agents-enable-text').textContent = 'Let your coding agents control ' + words().name
+        $('agents-on-text').textContent = 'Your agents can control ' + words().name
         // Web API: the account links sit under the player and Your Library, like a settings corner.
         var footerHere = !connected || view === 'v-player' || view === 'v-playlists'
         $('footer').hidden = !footerHere || document.querySelectorAll('#footer > :not([hidden])').length === 0
+      }
+
+      // Spotify or Apple Music. Apple Music needs the Music app, so off a Mac it says so and stays
+      // off; the Spotify side always works, which is the way out of any Apple Music error.
+      function renderSwitch(music) {
+        var musicAvailable = Boolean(info && info.available && info.available.indexOf('applemusic') !== -1)
+        Array.prototype.forEach.call(document.querySelectorAll('[data-pick]'), function (button) {
+          var on = (button.dataset.pick === 'applemusic') === music
+          button.setAttribute('aria-checked', String(on))
+          button.tabIndex = on ? -1 : 0
+        })
+        var pickMusic = document.querySelector('[data-pick="applemusic"]')
+        pickMusic.disabled = !music && Boolean(info) && !musicAvailable
+        pickMusic.title = pickMusic.disabled ? 'Apple Music needs the Music app on a Mac' : 'Show and control the Music app'
+        document.querySelector('[data-pick="spotify"]').title = 'Show and control Spotify'
       }
 
       // The mini player above the bottom bar: what plays, where, and play / pause.
@@ -1143,25 +1322,27 @@
         state = next
         stateAt = Date.now()
         if (next.backend === 'webapi' && next.status === 'playing') noteContext(next.context)
-        if ((setupWanted && !isWebApi()) || reconnecting) return renderSetup()
+        if ((setupWanted && !isWebApi() && !isMusic()) || reconnecting) return renderSetup()
         switch (next.status) {
           case 'needs-setup':
           case 'unauthenticated':
             return renderSetup()
           case 'closed':
-            return showMessage('#i-music', 'Spotify is not open', 'Open the Spotify desktop app and this panel updates by itself.', {
-              label: 'Open Spotify',
+            return showMessage('#i-music', words().closedTitle, words().closedBody, {
+              label: words().open,
               run: function () { command('open') }
             })
           case 'no-permission':
-            return showMessage('#i-lock', 'Orca can’t control Spotify', next.message, { label: 'Try again', run: poll })
+            return showMessage('#i-lock', words().permission, next.message, { label: 'Try again', run: poll })
           case 'no-device':
             return renderNoDevice(next)
           case 'rate-limited':
             return showMessage('#i-clock', 'Spotify asked to slow down', next.message, null)
           case 'unsupported':
+            if (isMusic()) return showMessage('#i-alert', words().unavailable, next.message, { label: 'Switch to Spotify', run: function () { switchService('spotify') } })
+          // falls through
           case 'error':
-            return showMessage('#i-alert', 'Spotify is unavailable', next.message, { label: 'Try again', run: poll })
+            return showMessage('#i-alert', words().unavailable, next.message, { label: 'Try again', run: poll })
         }
         // The lists stay put while playback changes underneath them.
         if (next.track) loadArtwork(next.track.artworkUrl)
@@ -1170,7 +1351,7 @@
           return renderMini()
         }
         if (!next.track) {
-          var hint = isWebApi() ? 'Pick something from Search or Your Library.' : 'Start something in Spotify and it shows up here.'
+          var hint = isWebApi() ? 'Pick something from Search or Your Library.' : words().idle
           return showMessage('#i-music', 'Nothing is playing', hint, null)
         }
         renderPlayer(next)
@@ -2223,7 +2404,7 @@
       function fail(error) {
         if (error && error.code === 'cancelled') return
         if (error && error.code === 'rate_limited') return schedule(error.retryAfterMs || 3000)
-        showMessage('#i-alert', 'Spotify is unavailable', (error && error.message) || String(error), { label: 'Try again', run: poll })
+        showMessage('#i-alert', words().unavailable, (error && error.message) || String(error), { label: 'Try again', run: poll })
         schedule(5000)
       }
 
@@ -2287,6 +2468,15 @@
           info = next
           return poll()
         }, fail)
+      }
+
+      // The switch: Apple Music, or back to the Spotify backend the settings hold.
+      function switchService(service) {
+        if (service === (isMusic() ? 'applemusic' : 'spotify')) return
+        setupWanted = false
+        reconnecting = false
+        stopKeepAlive()
+        switchBackend(service)
       }
 
       function disconnect() {
@@ -2421,6 +2611,9 @@
         $('connect').addEventListener('click', connect)
 
         // Footer
+        Array.prototype.forEach.call(document.querySelectorAll('[data-pick]'), function (button) {
+          button.addEventListener('click', function () { switchService(button.dataset.pick) })
+        })
         $('to-webapi').addEventListener('click', function () {
           if (connection().connected) return switchBackend('webapi')
           setupWanted = true
