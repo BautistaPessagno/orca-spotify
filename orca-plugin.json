@@ -5,7 +5,7 @@
   "id": "now-playing",
   "name": "Now Playing",
   "version": "0.4.0",
-  "description": "Spotify in Orca's sidebar: Home, your library, search, queue and devices, plus a now-playing status bar item. Your coding agents can play, pause, search and queue too. Works with the Spotify app on a Mac out of the box. Not affiliated with Spotify.",
+  "description": "Spotify or Apple Music in Orca's sidebar: Home, your library, search, queue and devices for Spotify, the Music app's player for Apple Music, plus a now-playing status bar item. Your coding agents can play, pause, search and queue too. Works with the Spotify or Music app on a Mac out of the box. Not affiliated with Spotify or Apple.",
   "author": {
     "name": "Bautista Pessagno",
     "url": "https://github.com/BautistaPessagno"
@@ -68,9 +68,24 @@
     ],
     "settings": [
       {
+        "key": "service",
+        "title": "Music service",
+        "description": "Which app Now Playing shows and controls. Apple Music works through the Music app on macOS. The switch at the bottom of the panel changes this too.",
+        "type": "string",
+        "default": "spotify",
+        "enum": [
+          "spotify",
+          "applemusic"
+        ],
+        "enumLabels": [
+          "Spotify",
+          "Apple Music (macOS)"
+        ]
+      },
+      {
         "key": "backend",
-        "title": "Backend",
-        "description": "How Now Playing reaches Spotify. Auto uses the desktop app on macOS and the Spotify Web API elsewhere.",
+        "title": "Spotify backend",
+        "description": "How Now Playing reaches Spotify. Auto uses the desktop app on macOS and the Spotify Web API elsewhere. Kept while Apple Music is selected, so switching back returns to it.",
         "type": "string",
         "default": "auto",
         "enum": [

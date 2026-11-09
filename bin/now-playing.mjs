@@ -1,26 +1,30 @@
 #!/usr/bin/env node
-// now-playing: control Spotify through Orca's Now Playing plugin, from a terminal or an agent.
+// now-playing: control Spotify or Apple Music through Orca's Now Playing plugin, from a terminal
+// or an agent. It drives whichever one the panel's switch has selected.
 // The plugin copies this file to ~/.orca-now-playing/ next to a `now-playing` launcher; run that.
 // No dependencies; Node 20 or newer. `now-playing help` lists the commands.
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-const HELP = `now-playing: control Spotify through Orca's Now Playing plugin.
+const HELP = `now-playing: control Spotify or Apple Music through Orca's Now Playing plugin.
+It drives the one selected with the switch at the bottom of the Now Playing panel.
 
 Usage: now-playing <command> [args] [--json]
 
-Player
+Player (Spotify and Apple Music)
   status                       What's playing (the default command)
   play                         Resume
-  play <spotify uri>           Play a track, album, playlist or artist
-  play <words> [--album|--playlist|--artist]
-                               Search and play the best match (a song unless a flag says otherwise)
   pause | toggle | next | previous
   shuffle on|off
   repeat off|all|one
   volume <0-100>
   seek <seconds | m:ss>
+
+Spotify only
+  play <spotify uri>           Play a track, album, playlist or artist
+  play <words> [--album|--playlist|--artist]
+                               Search and play the best match (a song unless a flag says otherwise)
   like [uri] | unlike [uri]    Save to or remove from your library (default: the current song)
 
 Find and queue (Spotify Web API)
@@ -35,8 +39,10 @@ Other
   call <request> [json]        Send any request the panel uses (see GET /v1/health)
   help
 
+With Apple Music selected, the Spotify-only commands answer with a sentence that says so.
+
 --json prints the plugin's raw JSON answer instead of text.
-Exit codes: 0 done, 1 Spotify refused or failed, 2 bad usage, 3 Now Playing not reachable.`
+Exit codes: 0 done, 1 the player refused or failed, 2 bad usage, 3 Now Playing not reachable.`
 
 const SEARCH_TYPES = ['track', 'album', 'artist', 'playlist', 'show', 'episode']
 const URI = /^spotify:(track|episode|album|playlist|artist|show):[A-Za-z0-9]+$/
@@ -87,7 +93,7 @@ async function request(name, input) {
   return body.result
 }
 
-// The player state after a command, or an error when Spotify says why it couldn't.
+// The player state after a command, or an error when the player says why it couldn't.
 async function command(cmd, value) {
   const state = await request('player.command', value === undefined ? { cmd } : { cmd, value })
   if (state?.message && !state.track) {
@@ -115,11 +121,13 @@ function describe(state) {
   lines.push(`  ${fmt(state.positionMs)} / ${fmt(t.durationMs)}`)
   const extras = []
   if (state.device?.name) extras.push(`on ${state.device.name}`)
+  if (state.backend === 'applemusic') extras.push('in Apple Music')
   if (typeof state.volume === 'number') extras.push(`volume ${state.volume}`)
   if (state.shuffle) extras.push('shuffle')
   if (state.repeat && state.repeat !== 'off') extras.push(state.repeat === 'track' ? 'repeat one' : 'repeat')
   if (extras.length) lines.push(`  ${extras.join(' · ')}`)
-  if (t.uri) lines.push(`  ${t.uri}`)
+  // Only Spotify URIs: Apple Music's track ids can't be played or queued from here.
+  if (t.uri?.startsWith('spotify:')) lines.push(`  ${t.uri}`)
   return lines.join('\n')
 }
 
