@@ -30,7 +30,7 @@
   ],
   "cover": {
     "path": "images/cover.png",
-    "alt": "Now Playing in Orca's sidebar: Your Library with Liked Songs and playlists, the player with its device menu, and an agent playing music from a terminal"
+    "alt": "Now Playing in Orca's sidebar: the Spotify player beside the Apple Music player in the Music app's look, and an agent playing music from a terminal"
   },
   "screenshots": [
     {
@@ -39,14 +39,19 @@
       "caption": "Home, Your Library and every album, artist and playlist"
     },
     {
+      "path": "images/apple-music.png",
+      "alt": "The Apple Music player in Orca's light and dark themes, with the Spotify and Apple Music switch at the bottom of each",
+      "caption": "Apple Music too, in the Music app's look"
+    },
+    {
       "path": "images/agents.png",
       "alt": "A coding agent in an Orca terminal runs now-playing to search and play an album, and the panel updates",
       "caption": "Your agents can drive it too"
     },
     {
       "path": "images/player.png",
-      "alt": "The desktop-app player in Orca's light theme next to the device picker of a connected Spotify account",
-      "caption": "No setup on a Mac, or any device with your account"
+      "alt": "The Spotify desktop-app player in Orca's light theme next to the device picker of a connected Spotify account",
+      "caption": "Spotify: no setup on a Mac, or any device with your account"
     }
   ],
   "contributes": {

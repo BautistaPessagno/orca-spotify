@@ -8,7 +8,7 @@ queue with the `now-playing` command. Not affiliated with Spotify or Apple.
 **[Open in Orca →](https://onorca.dev/plugins/bautistapessagno.now-playing)** &nbsp;·&nbsp;
 share link: `orca://plugins/bautistapessagno.now-playing?catalog=community`
 
-![Now Playing: the player, Your Library and an agent playing music from a terminal](images/cover.png)
+![Now Playing: the Spotify and Apple Music players side by side, and an agent playing music from a terminal](images/cover.png)
 
 It reaches Spotify one of two ways:
 
@@ -26,6 +26,8 @@ Spotify desktop app. Flip the **Spotify | Apple Music** switch at the bottom of 
 **Music service** in the plugin's settings. While Apple Music is on, the panel takes the Music
 app's look, in Orca's light and dark themes. Switching back returns to the Spotify backend you
 had. Apple Music gets the player only: no search, queue, devices or library.
+
+![The Apple Music player in Orca's light and dark themes, with the Spotify | Apple Music switch](images/apple-music.png)
 
 ## Install
 
