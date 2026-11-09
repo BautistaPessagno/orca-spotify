@@ -1,6 +1,6 @@
 // The Spotify Web API as a Backend: controls whichever Spotify Connect device is active
 // (desktop app, phone, speaker). Needs a login (auth.mjs) and Spotify Premium.
-import { MESSAGES, REPEAT_MODES, SpotifyError, classifyError, errorState } from '../../src/backend.mjs'
+import { MESSAGES, PLAYABLE_URI, REPEAT_MODES, SpotifyError, classifyError, errorState } from '../../src/backend.mjs'
 import { createLibrary, toTrack } from './library.mjs'
 
 // The Web API's rate limit is a rolling 30 s window shared by all of the person's Dev Mode
@@ -91,6 +91,12 @@ export function createWebApiBackend({ client, auth, fetchImpl }) {
     },
     open: () => {
       throw new SpotifyError('unsupported', MESSAGES.noOpen)
+    },
+    // A track or episode plays alone; an album, playlist or artist plays as a context.
+    playUri: (uri) => {
+      if (typeof uri !== 'string' || !PLAYABLE_URI.test(uri)) throw invalid('Expected a Spotify URI such as spotify:album:…')
+      const single = /^spotify:(track|episode):/.test(uri)
+      return onDevice(() => client.request('PUT', '/me/player/play', { body: single ? { uris: [uri] } : { context_uri: uri } }))
     }
   }
 

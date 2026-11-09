@@ -3,38 +3,68 @@
   "manifestVersion": 2,
   "execution": "trusted-worker",
   "id": "now-playing",
-  "publisher": "bautistapessagno",
   "name": "Now Playing",
-  "version": "0.3.2",
-  "description": "Control Spotify from Orca: the desktop app on macOS, or any device through the Spotify Web API. Not affiliated with Spotify.",
-  "author": { "name": "Bautista Pessagno", "url": "https://github.com/BautistaPessagno" },
+  "version": "0.4.0",
+  "description": "Spotify in Orca's sidebar: Home, your library, search, queue and devices, plus a now-playing status bar item. Your coding agents can play, pause, search and queue too. Works with the Spotify app on a Mac out of the box. Not affiliated with Spotify.",
+  "author": {
+    "name": "Bautista Pessagno",
+    "url": "https://github.com/BautistaPessagno"
+  },
   "repository": "https://github.com/BautistaPessagno/orca-spotify",
   "license": "MIT",
-  "engines": { "orca": ">=1.4.246" },
+  "engines": {
+    "orca": ">=1.4.248"
+  },
   "pluginApi": 1,
   "main": "worker.mjs",
-  "capabilities": [{ "kind": "secrets:own" }, { "kind": "settings:own" }, { "kind": "storage:own" }],
-  "cover": { "path": "images/cover.png", "alt": "Now Playing: the sidebar player in Orca next to its keyboard shortcuts" },
+  "capabilities": [
+    {
+      "kind": "secrets:own"
+    },
+    {
+      "kind": "settings:own"
+    },
+    {
+      "kind": "storage:own"
+    }
+  ],
+  "cover": {
+    "path": "images/cover.png",
+    "alt": "Now Playing in Orca's sidebar: Your Library with Liked Songs and playlists, the player with its device menu, and an agent playing music from a terminal"
+  },
   "screenshots": [
-    { "path": "images/player-dark.png", "alt": "The Now Playing panel playing a track in Orca's dark theme", "caption": "The sidebar player" },
-    { "path": "images/player-light.png", "alt": "The Now Playing panel, paused, in Orca's light theme", "caption": "Follows your Orca theme" },
-    { "path": "images/states.png", "alt": "The panel's messages for Spotify closed, missing macOS permission and nothing playing", "caption": "Tells you what to do when something is off" }
+    {
+      "path": "images/library.png",
+      "alt": "The panel in dark theme: Home with recently played albums and playlists, Your Library, and an album page",
+      "caption": "Home, Your Library and every album, artist and playlist"
+    },
+    {
+      "path": "images/agents.png",
+      "alt": "A coding agent in an Orca terminal runs now-playing to search and play an album, and the panel updates",
+      "caption": "Your agents can drive it too"
+    },
+    {
+      "path": "images/player.png",
+      "alt": "The desktop-app player in Orca's light theme next to the device picker of a connected Spotify account",
+      "caption": "No setup on a Mac, or any device with your account"
+    }
   ],
   "contributes": {
-    "commands": [
-      { "id": "playpause", "title": "Spotify: Play / Pause" },
-      { "id": "next", "title": "Spotify: Next track" },
-      { "id": "previous", "title": "Spotify: Previous track" },
-      { "id": "now", "title": "Spotify: Now playing" },
-      { "id": "toggleShuffle", "title": "Spotify: Toggle shuffle" }
-    ],
-    "keybindings": [
-      { "command": "playpause", "key": "Mod+Alt+Shift+P" },
-      { "command": "next", "key": "Mod+Alt+Shift+N" },
-      { "command": "previous", "key": "Mod+Alt+Shift+B" }
-    ],
     "panels": [
-      { "id": "player", "title": "Now Playing", "icon": "play", "entry": "panel/index.html" }
+      {
+        "id": "player",
+        "title": "Now Playing",
+        "icon": "play",
+        "entry": "panel/index.html"
+      }
+    ],
+    "statusBarItems": [
+      {
+        "id": "now-playing",
+        "icon": "play",
+        "text": "Now Playing",
+        "tooltip": "Now Playing"
+      }
     ],
     "settings": [
       {
@@ -43,8 +73,16 @@
         "description": "How Now Playing reaches Spotify. Auto uses the desktop app on macOS and the Spotify Web API elsewhere.",
         "type": "string",
         "default": "auto",
-        "enum": ["auto", "applescript", "webapi"],
-        "enumLabels": ["Auto", "Spotify desktop app (macOS)", "Spotify Web API"]
+        "enum": [
+          "auto",
+          "applescript",
+          "webapi"
+        ],
+        "enumLabels": [
+          "Auto",
+          "Spotify desktop app (macOS)",
+          "Spotify Web API"
+        ]
       },
       {
         "key": "clientId",
@@ -62,6 +100,20 @@
         "default": 43117,
         "minimum": 1024,
         "maximum": 65535
+      },
+      {
+        "key": "agentAccess",
+        "title": "Agent access",
+        "description": "Let coding agents and scripts on this computer control Spotify with the now-playing command (~/.orca-now-playing/now-playing). Only this computer can reach it, with a token only you can read.",
+        "type": "boolean",
+        "default": true
+      },
+      {
+        "key": "agentSkill",
+        "title": "Agent skill",
+        "description": "Teach Claude Code, Codex and other agents to use it: installs a now-playing skill in ~/.claude/skills and ~/.agents/skills. Turning this off removes it.",
+        "type": "boolean",
+        "default": false
       }
     ]
   }

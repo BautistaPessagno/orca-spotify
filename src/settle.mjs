@@ -13,9 +13,11 @@ const applied = {
   next: trackChanged,
   // Past the first seconds, "previous" restarts the same track instead of changing it.
   previous: (before, after) =>
-    trackChanged(before, after) || (after.positionMs ?? 0) < (before.positionMs ?? 0)
+    trackChanged(before, after) || (after.positionMs ?? 0) < (before.positionMs ?? 0),
+  // Playing what already plays changes nothing; that costs one settle wait, no more.
+  playUri: (before, after) => after.status === 'playing' && trackChanged(before, after)
 }
-const NEEDS_BEFORE = new Set(['playpause', 'next', 'previous'])
+const NEEDS_BEFORE = new Set(['playpause', 'next', 'previous', 'playUri'])
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 

@@ -132,9 +132,20 @@ test('seek takes milliseconds and sends whole seconds', async () => {
 
 test('every shared command name is one the desktop app knows', async () => {
   const { COMMAND_NAMES } = await import('../src/backend.mjs')
-  const values = { setRepeat: 'off', setVolume: 10, seek: 0 }
+  const values = { setRepeat: 'off', setVolume: 10, seek: 0, playUri: 'spotify:track:1' }
   for (const name of COMMAND_NAMES) {
     const { exec } = fakeExec('ok\n')
     assert.equal(await createAppleScriptBackend({ exec, platform: 'darwin' }).command(name, values[name]), true, name)
   }
+})
+
+test('playUri plays a Spotify URI, and nothing else reaches the script', async () => {
+  const { exec, calls } = fakeExec('ok\n')
+  const spotify = createAppleScriptBackend({ exec, platform: 'darwin' })
+  await spotify.command('playUri', 'spotify:album:1weenld61qoidwYuZ1GESA')
+  assert.ok(calls[0].args.includes('tell application "Spotify" to play track "spotify:album:1weenld61qoidwYuZ1GESA"'))
+  for (const bad of ['spotify:album:x" & (do shell script "id") & "', 'spotify:user:me', 'https://open.spotify.com/album/x', 42]) {
+    await assert.rejects(spotify.command('playUri', bad), { kind: 'invalid' }, String(bad))
+  }
+  assert.equal(calls.length, 1)
 })

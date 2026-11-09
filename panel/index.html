@@ -373,6 +373,8 @@
       .footer .warn { width: 100%; }
       .attribution { display: flex; align-items: center; gap: 5px; }
       .attribution svg { width: 14px; height: 14px; }
+      .agents { display: flex; align-items: center; gap: 5px; width: 100%; justify-content: center; }
+      .agents svg { width: 14px; height: 14px; flex: none; }
 
       /* ---------- Web API mode: the Spotify look ----------
          html.web is set while the Web API backend is active (and on the setup view). The
@@ -695,6 +697,7 @@
       <symbol id="i-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6" /></symbol>
       <symbol id="i-sort" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16" /><path d="m3 16 4 4 4-4" /><path d="M17 20V4" /><path d="m13 8 4-4 4 4" /></symbol>
       <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></symbol>
+      <symbol id="i-terminal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="16" rx="2.5" /><path d="m7 9 3 3-3 3" /><path d="M13 15h4" /></symbol>
       <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8" /><path d="M21 3v5h-5" /></symbol>
       <!-- Placeholder for the Spotify icon. Replace it with the official icon from Spotify's
            design guidelines (developer.spotify.com/documentation/design) before release. -->
@@ -900,6 +903,8 @@
         Spotify ends this login soon (every 6 months). <button type="button" class="link" id="reconnect">Reconnect</button>
       </div>
       <button type="button" class="link attribution" id="attribution" hidden><svg><use href="#i-spotify" /></svg>Content from Spotify</button>
+      <button type="button" class="link agents" id="agents-enable" hidden title="Agents run ~/.orca-now-playing/now-playing; this also installs its skill for Claude Code and Codex"><svg><use href="#i-terminal" /></svg>Let your coding agents control Spotify</button>
+      <span class="agents" id="agents-on" hidden title="Agents run ~/.orca-now-playing/now-playing. Turn it off under Settings → Plugins → Now Playing."><svg><use href="#i-terminal" /></svg>Your agents can control Spotify</span>
       <span id="connection-age" hidden></span>
       <button type="button" class="link" id="disconnect" hidden>Disconnect</button>
       <button type="button" class="link" id="to-webapi" hidden>Search, queue and devices → use the Spotify Web API</button>
@@ -933,6 +938,8 @@
       var LOGIN_WATCH_MS = 3 * 60 * 1000
 
       var info = null // backend.info: { id, capabilities, available, connection }
+      var agents = null // agents.info: { access, bridge, skill: [where it is installed] }
+      var currentView = null
       var state = null
       var stateAt = 0
       var timer = null
@@ -1002,6 +1009,7 @@
       var VIEWS = ['v-player', 'v-message', 'v-setup', 'v-queue', 'v-search', 'v-playlists', 'v-devices', 'v-home', 'v-detail']
 
       function show(view) {
+        currentView = view
         VIEWS.forEach(function (id) { $(id).hidden = id !== view })
         renderChrome(view)
       }
@@ -1034,6 +1042,9 @@
         if (conn.authorizedAt) $('connection-age').textContent = 'Connected ' + ago(conn.authorizedAt)
         $('expiry-warning').hidden = !(connected && ((state && state.authExpiresSoon) || conn.expiresSoon))
         $('attribution').hidden = !(connected && view !== 'v-player' && view !== 'v-message')
+        var agentsOn = Boolean(agents && agents.access && agents.bridge && agents.skill && agents.skill.length)
+        $('agents-enable').hidden = !agents || agentsOn || setup
+        $('agents-on').hidden = !agentsOn || setup
         // Web API: the account links sit under the player and Your Library, like a settings corner.
         var footerHere = !connected || view === 'v-player' || view === 'v-playlists'
         $('footer').hidden = !footerHere || document.querySelectorAll('#footer > :not([hidden])').length === 0
@@ -2220,6 +2231,14 @@
         return request('backend.info').then(function (next) { info = next })
       }
 
+      // Whether agents can use Now Playing; an older worker has no answer, and the link stays hidden.
+      function loadAgents() {
+        return request('agents.info').then(function (next) {
+          agents = next && typeof next.access === 'boolean' ? next : null
+          if (currentView) renderChrome(currentView)
+        }, function () {})
+      }
+
       function poll() {
         var seq = ++requestSeq
         return request('player.state').then(function (next) {
@@ -2412,6 +2431,17 @@
           switchBackend('applescript')
         })
         $('disconnect').addEventListener('click', disconnect)
+        $('agents-enable').addEventListener('click', function () {
+          $('agents-enable').disabled = true
+          request('agents.enable').then(function (next) {
+            agents = next
+            $('agents-enable').disabled = false
+            if (currentView) renderChrome(currentView)
+          }, function (error) {
+            $('agents-enable').disabled = false
+            fail(error)
+          })
+        })
         // Renew the login without deleting the one that still works.
         $('reconnect').addEventListener('click', function () {
           reconnecting = true
@@ -2433,6 +2463,7 @@
 
       wire()
       loadInfo().then(poll, function () { poll() })
+      loadAgents()
     </script>
   </body>
 </html>

@@ -257,7 +257,7 @@ test('your playlists, 50 per page', async () => {
 test('every shared command name is one the Web API backend knows', async () => {
   const { COMMAND_NAMES } = await import('../src/backend.mjs')
   const { backend } = setup({ 'GET /me/player': reply(200, playback()) })
-  const values = { setRepeat: 'off', setVolume: 10, seek: 0 }
+  const values = { setRepeat: 'off', setVolume: 10, seek: 0, playUri: 'spotify:track:1' }
   for (const name of COMMAND_NAMES) {
     if (name === 'open') continue
     assert.equal(await backend.command(name, values[name]), true, name)
@@ -268,4 +268,13 @@ test('the state says what the track is playing from', async () => {
   const context = { type: 'playlist', uri: 'spotify:playlist:p1', external_urls: { spotify: 'u' } }
   const state = await setup({ 'GET /me/player': reply(200, playback({ context })) }).backend.getState()
   assert.deepEqual(state.context, { type: 'playlist', uri: 'spotify:playlist:p1' })
+})
+
+test('playUri plays a track alone and an album, playlist or artist as a context', async () => {
+  const { api, backend } = setup({})
+  await backend.command('playUri', 'spotify:track:abc')
+  await backend.command('playUri', 'spotify:album:xyz')
+  const plays = api.requests.filter((r) => r.path === '/me/player/play')
+  assert.deepEqual(plays.map((r) => r.body), [{ uris: ['spotify:track:abc'] }, { context_uri: 'spotify:album:xyz' }])
+  await assert.rejects(backend.command('playUri', 'spotify:user:me'), { kind: 'invalid' })
 })

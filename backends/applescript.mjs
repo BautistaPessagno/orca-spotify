@@ -1,7 +1,7 @@
 // Spotify desktop on macOS, driven through osascript. Every script checks
 // `application "Spotify" is running` first so nothing here ever launches Spotify.
 import { execFile } from 'node:child_process'
-import { MESSAGES, REPEAT_MODES, SpotifyError, errorState } from '../src/backend.mjs'
+import { MESSAGES, PLAYABLE_URI, REPEAT_MODES, SpotifyError, errorState } from '../src/backend.mjs'
 
 const SEP = '\u001f'
 const TIMEOUT_MS = 3000
@@ -51,6 +51,13 @@ const COMMANDS = {
       throw new SpotifyError('invalid', 'Position must be a number of milliseconds.')
     }
     return `set player position to ${seconds}`
+  },
+  // The URI goes inside the script, so only the strict Spotify URI shape gets through.
+  playUri: (uri) => {
+    if (typeof uri !== 'string' || !PLAYABLE_URI.test(uri)) {
+      throw new SpotifyError('invalid', 'Expected a Spotify URI such as spotify:album:…')
+    }
+    return `play track "${uri}"`
   }
 }
 

@@ -9,6 +9,7 @@
 //   }
 //
 // `seek` takes milliseconds on every backend; AppleScript rounds to whole seconds.
+// `playUri` plays a Spotify URI on both: a track alone, or an album, playlist or artist.
 
 export const COMMAND_NAMES = Object.freeze([
   'playpause',
@@ -21,8 +22,13 @@ export const COMMAND_NAMES = Object.freeze([
   'setRepeat',
   'setVolume',
   'seek',
-  'open'
+  'open',
+  'playUri'
 ])
+
+// What `playUri` takes: a track, episode, album, playlist or artist. Strict, because the
+// AppleScript backend puts it inside a script.
+export const PLAYABLE_URI = /^spotify:(track|episode|album|playlist|artist):[A-Za-z0-9]{1,64}$/
 
 export const REPEAT_MODES = Object.freeze(['off', 'context', 'track'])
 
