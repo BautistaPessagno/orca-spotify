@@ -2,14 +2,15 @@
 // is also what keeps the worker running while the plugin is enabled, so the agent bridge stays
 // reachable without the panel open.
 //
-// It reads Spotify on its own only as often as the backend allows (AppleScript: every 5 s; Web
-// API: every 30 s, or when the song should end), and takes every state the panel or an agent
-// reads in between for free through `show`.
+// It reads the player on its own only as often as the backend allows (the Spotify desktop app and
+// Apple Music: every 5 s; Web API: every 30 s, or when the song should end), and takes every
+// state the panel or an agent reads in between for free through `show`. The tooltip names Apple
+// Music while it is the one playing; Spotify's stays as it was.
 export const ITEM_ID = 'now-playing'
 const TEXT_MAX = 64
 const TOOLTIP_MAX = 256
 
-const POLL = { applescript: 5000, webapi: 30_000 }
+const POLL = { applescript: 5000, applemusic: 5000, webapi: 30_000 }
 const IDLE_MS = 30_000
 
 const clip = (text, max) => (text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text)
@@ -19,7 +20,7 @@ export function statusBarView(state) {
   const track = state?.track
   if (!track || (state.status !== 'playing' && state.status !== 'paused')) return null
   const label = track.artist ? `${track.title} · ${track.artist}` : track.title
-  const where = state.device?.name ? ` on ${state.device.name}` : ''
+  const where = state.device?.name ? ` on ${state.device.name}` : state.backend === 'applemusic' ? ' in Apple Music' : ''
   return {
     text: clip(label, TEXT_MAX),
     icon: state.status === 'playing' ? 'play' : 'pause',

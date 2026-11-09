@@ -94,7 +94,8 @@ test('backend.info names the active backend, what it can do, and the login', asy
   const info = await handlers['backend.info']()
   assert.equal(info.id, 'webapi')
   assert.equal(info.capabilities.search, true)
-  assert.deepEqual(info.available, ['applescript', 'webapi'])
+  assert.equal(info.service, 'spotify')
+  assert.deepEqual(info.available, ['applescript', 'webapi', 'applemusic'])
   assert.equal(info.connection.connected, true)
   assert.deepEqual((await webSetup({ platform: 'linux' }).handlers['backend.info']()).available, ['webapi'])
 })
@@ -262,4 +263,72 @@ test('artwork from any of Spotify\'s image hosts, such as This Is covers', async
   assert.equal((await artwork({ url: 'https://scdn.co.example.com/x' })).dataUrl, null)
   assert.equal((await artwork({ url: 'http://i.scdn.co/x' })).dataUrl, null)
   assert.equal(urls.length, 2)
+})
+
+// The real selector with an Apple Music–like backend next to the Spotify ones.
+function musicSetup({ service = 'applemusic', platform = 'darwin' } = {}) {
+  const artworkCalls = []
+  const applemusic = {
+    id: 'applemusic',
+    capabilities: { repeatModes: ['off', 'context', 'track'], devices: false, search: false },
+    settle: { tries: 0, stepMs: 0 },
+    getState: async () => ({ status: 'playing', track: { title: 'Song', uri: 'applemusic:track:4F3A2B1C0D9E8F70', artworkUrl: 'applemusic-artwork:4F3A2B1C0D9E8F70' } }),
+    command: async () => true,
+    artwork: async (id) => (artworkCalls.push(id), 'data:image/jpeg;base64,AAAA')
+  }
+  const webapi = { id: 'webapi', capabilities: { search: true, library: true }, getState: async () => state, command: async () => true, search: async () => ({}) }
+  const applescript = { id: 'applescript', capabilities: {}, getState: async () => state, command: async () => true }
+  const settings = { values: { service, backend: 'webapi' }, get: async (k) => settings.values[k], set: async (k, v) => (settings.values[k] = v) }
+  const spotify = createBackendSelector({ backends: { applescript, webapi, applemusic }, settings, platform })
+  const { fetchImpl, urls } = fakeFetch()
+  const handlers = createPanelHandlers(spotify, { platform, fetchImpl, delay: async () => {} })
+  return { handlers, settings, artworkCalls, urls }
+}
+
+test('backend.info names the service, and backend.select switches to Apple Music and back', async () => {
+  const { handlers, settings } = musicSetup({ service: 'spotify' })
+  assert.equal((await handlers['backend.info']()).service, 'spotify')
+  const music = await handlers['backend.select']({ backend: 'applemusic' })
+  assert.equal(music.id, 'applemusic')
+  assert.equal(music.service, 'applemusic')
+  assert.equal((await handlers['player.state']()).backend, 'applemusic')
+  assert.equal((await handlers['backend.select']({ backend: 'spotify' })).id, 'webapi')
+  assert.equal(settings.values.backend, 'webapi')
+})
+
+test('Apple Music artwork comes from the Music backend, never from the network', async () => {
+  const { handlers, artworkCalls, urls } = musicSetup()
+  const reply = await handlers['player.artwork']({ url: 'applemusic-artwork:4F3A2B1C0D9E8F70' })
+  assert.deepEqual(reply, { url: 'applemusic-artwork:4F3A2B1C0D9E8F70', dataUrl: 'data:image/jpeg;base64,AAAA' })
+  assert.deepEqual(artworkCalls, ['4F3A2B1C0D9E8F70'])
+  assert.equal(urls.length, 0)
+  // With Spotify selected the Music app isn't asked.
+  const spotify = musicSetup({ service: 'spotify' })
+  assert.equal((await spotify.handlers['player.artwork']({ url: 'applemusic-artwork:4F3A2B1C0D9E8F70' })).dataUrl, null)
+  assert.deepEqual(spotify.artworkCalls, [])
+})
+
+test('what Apple Music lacks is refused with a sentence that says so, before any input check', async () => {
+  const { handlers } = musicSetup()
+  for (const [name, input] of [
+    ['library.search', { q: 'x' }],
+    ['player.devices'],
+    ['player.queue'],
+    ['player.enqueue', { uri: 'applemusic:track:4F3A2B1C0D9E8F70' }],
+    ['library.save', { uri: 'applemusic:track:4F3A2B1C0D9E8F70', saved: true }],
+    ['library.playlists', {}]
+  ]) {
+    await assert.rejects(handlers[name](input), { kind: 'unsupported', message: /^Apple Music can’t do that/ }, name)
+  }
+  // The same requests still work once Spotify is back.
+  await handlers['backend.select']({ backend: 'spotify' })
+  assert.deepEqual(await handlers['library.search']({ q: 'x' }), {})
+})
+
+test('a Spotify URI sent to Apple Music comes back as a state that explains it', async () => {
+  const { createAppleMusicBackend } = await import('../backends/applemusic.mjs')
+  const music = createAppleMusicBackend({ exec: () => assert.fail('no script'), platform: 'darwin' })
+  const reply = await createPanelHandlers(music)['player.command']({ cmd: 'playUri', value: 'spotify:track:1' })
+  assert.equal(reply.status, 'unsupported')
+  assert.match(reply.message, /Apple Music can’t play Spotify/)
 })

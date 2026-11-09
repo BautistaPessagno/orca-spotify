@@ -106,6 +106,10 @@ test('declares the settings and capabilities the Web API backend needs', () => {
   const settings = Object.fromEntries(manifest.contributes.settings.map((s) => [s.key, s]))
   assert.deepEqual(settings.backend.enum, ['auto', 'applescript', 'webapi'])
   assert.equal(settings.backend.default, 'auto')
+  // The switch: its own setting, so a saved `backend` keeps working and survives a trip to Apple Music.
+  assert.deepEqual(settings.service.enum, ['spotify', 'applemusic'])
+  assert.equal(settings.service.default, 'spotify')
+  assert.equal(settings.service.enumLabels.length, 2)
   assert.equal(settings.clientId.type, 'string')
   assert.equal(settings.clientId.maxLength, 64)
   assert.equal(settings.redirectPort.default, 43117)

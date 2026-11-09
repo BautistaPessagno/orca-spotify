@@ -1,8 +1,9 @@
 // Now Playing worker: the handlers the sidebar panel calls, the status bar item, and the agent
 // bridge that lets coding agents use the same handlers. All go through one backend selector:
 // AppleScript (Spotify desktop on macOS) or the Spotify Web API (any Connect device), picked by
-// the `backend` setting.
+// the `backend` setting, or Apple's Music app on macOS when the `service` setting says so.
 import { readFileSync } from 'node:fs'
+import { createAppleMusicBackend } from './backends/applemusic.mjs'
 import { createAppleScriptBackend } from './backends/applescript.mjs'
 import { createAuth } from './backends/webapi/auth.mjs'
 import { createWebApiBackend } from './backends/webapi/backend.mjs'
@@ -29,6 +30,7 @@ export default function activate(orca, deps = {}) {
   })
   const backends = deps.backends ?? {
     applescript: createAppleScriptBackend(),
+    applemusic: createAppleMusicBackend(),
     webapi: createWebApiBackend({ client: createClient({ auth }), auth })
   }
   const spotify = createBackendSelector({ backends, settings: orca.settings })
@@ -72,7 +74,7 @@ export default function activate(orca, deps = {}) {
   for (const [name, handler] of Object.entries(handlers)) orca.panels.handle(name, handler)
 
   orca.panels.handle('agents.info', agentInfo)
-  // The panel's "Let agents control Spotify": turns on access and the skill in one click.
+  // The panel's "Let your coding agents control …": turns on access and the skill in one click.
   orca.panels.handle('agents.enable', async () => {
     await orca.settings.set('agentAccess', true)
     await orca.settings.set('agentSkill', true)

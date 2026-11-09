@@ -4,8 +4,9 @@
 //   player.state                              → state
 //   player.command      { cmd, value? }       → state after the command
 //   player.artwork      { url }               → { url, dataUrl } | { url, dataUrl: null }
-//   backend.info                              → { id, capabilities, available, connection }
-//   backend.select      { backend }           → backend.info
+//   backend.info                              → { id, service, capabilities, available, connection }
+//   backend.select      { backend }           → backend.info; backend is a BACKEND_IDS id or
+//                                               'spotify' (back to the Spotify backend you had)
 //   auth.start          { clientId? }         → { url } | { url: null, message }
 //   auth.status                               → { status: 'idle' | 'pending' | 'connected' | 'failed', message? }
 //   auth.disconnect                           → { ok }
@@ -25,9 +26,13 @@
 //   library.saved       { uris }              → boolean[] (up to 20)
 //   library.save        { uri, saved }        → { saved }
 //
-// player.devices through library.playlists need a backend with that capability (the Web API);
-// on AppleScript they reject.
-import { COMMAND_NAMES, SEARCH_TYPES, SpotifyError, classifyError, errorState } from './backend.mjs'
+// player.devices through library.save need a backend with that capability (the Web API); on
+// the Spotify desktop app and on Apple Music they reject with a sentence that says so.
+//
+// player.artwork takes a Spotify image URL, or the `applemusic-artwork:<persistent id>` the Apple
+// Music backend puts in its state, which it answers from the Music app itself.
+import { ARTWORK_PREFIX as MUSIC_ARTWORK } from '../backends/applemusic.mjs'
+import { COMMAND_NAMES, MUSIC_MESSAGES, SEARCH_TYPES, SpotifyError, classifyError, errorState, serviceOf } from './backend.mjs'
 import { runAndSettle } from './settle.mjs'
 
 // AppleScript artwork URLs end in a size-coded image id; 1e02 is the 300×300 variant, small
@@ -49,6 +54,26 @@ const PAGE_KINDS = ['album', 'artist', 'playlist']
 const SAVE_KINDS = ['track', 'album', 'episode', 'show']
 const MAX_SAVED_CHECK = 20
 const MAX_URIS = 100
+
+// What only the Spotify Web API can do. Apple Music refuses these before reading their input, so
+// an agent hears what Apple Music lacks instead of what a Spotify URI looks like.
+const SPOTIFY_ONLY = [
+  'player.devices',
+  'player.transfer',
+  'player.queue',
+  'player.enqueue',
+  'player.playContext',
+  'library.search',
+  'library.playlists',
+  'library.home',
+  'library.liked',
+  'library.albums',
+  'library.artists',
+  'library.shows',
+  'library.page',
+  'library.saved',
+  'library.save'
+]
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -119,13 +144,15 @@ export function createPanelHandlers(spotify, { fetchImpl = globalThis.fetch, aut
     const backend = await active()
     return {
       id: backend.id,
+      service: serviceOf(backend.id),
       capabilities: backend.capabilities,
-      available: platform === 'darwin' ? ['applescript', 'webapi'] : ['webapi'],
+      // Apple Music and the Spotify desktop app are reached with osascript, so only on a Mac.
+      available: platform === 'darwin' ? ['applescript', 'webapi', 'applemusic'] : ['webapi'],
       connection: auth ? await auth.connection() : null
     }
   }
 
-  return {
+  const handlers = {
     'player.state': async () => show(await spotify.getState()),
 
     'player.command': async (input) => {
@@ -141,6 +168,12 @@ export function createPanelHandlers(spotify, { fetchImpl = globalThis.fetch, aut
 
     'player.artwork': async (input) => {
       const url = input?.url
+      // Apple Music: the cover of the track playing now, read from the Music app once per track.
+      if (typeof url === 'string' && url.startsWith(MUSIC_ARTWORK)) {
+        const backend = await active()
+        const dataUrl = backend.id === 'applemusic' && backend.artwork ? await backend.artwork(url.slice(MUSIC_ARTWORK.length)) : null
+        return { url, dataUrl }
+      }
       // Only Spotify's image hosts: the panel must not turn the worker into a general fetcher.
       if (typeof url !== 'string' || !ARTWORK_HOSTS.some((host) => host.test(url))) return { url: url ?? null, dataUrl: null }
       return { url, dataUrl: await artwork(url) }
@@ -245,4 +278,13 @@ export function createPanelHandlers(spotify, { fetchImpl = globalThis.fetch, aut
       return { saved: input.saved }
     }
   }
+
+  for (const name of SPOTIFY_ONLY) {
+    const handler = handlers[name]
+    handlers[name] = async (input, context) => {
+      if ((await active()).id === 'applemusic') throw new SpotifyError('unsupported', MUSIC_MESSAGES.lacks)
+      return handler(input, context)
+    }
+  }
+  return handlers
 }

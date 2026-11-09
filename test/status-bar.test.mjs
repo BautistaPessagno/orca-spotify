@@ -67,3 +67,26 @@ test('polls on its own, but not when someone just read Spotify', async () => {
   assert.equal(timers.at(-1).ms, 20_000)
   bar.stop()
 })
+
+test('the tooltip names Apple Music while it plays', () => {
+  const view = statusBarView({ status: 'playing', backend: 'applemusic', track })
+  assert.equal(view.text, 'Low Tide Lanterns · Harbor Lights')
+  assert.equal(view.tooltip, 'Playing: Low Tide Lanterns by Harbor Lights in Apple Music')
+  assert.equal(statusBarView({ status: 'paused', backend: 'applescript', track }).tooltip, 'Paused: Low Tide Lanterns by Harbor Lights')
+  assert.equal(statusBarView({ status: 'closed', backend: 'applemusic', message: 'Music is not open.' }), null)
+})
+
+test('polls Apple Music as often as the Spotify desktop app', async () => {
+  const timers = []
+  const bar = createStatusBar({
+    host: { call: async () => ({ ok: true }) },
+    spotify: { id: 'applemusic', getState: async () => ({ status: 'paused', track, positionMs: 0 }) },
+    setTimer: (fn, ms) => (timers.push({ fn, ms }), timers.length),
+    clearTimer: () => {},
+    now: () => 0
+  })
+  bar.start()
+  await timers.shift().fn()
+  assert.equal(timers.at(-1).ms, 5000)
+  bar.stop()
+})

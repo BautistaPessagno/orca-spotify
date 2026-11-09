@@ -1,4 +1,4 @@
-// Lets coding agents (and any script you run) control Spotify through Now Playing.
+// Lets coding agents (and any script you run) control Spotify or Apple Music through Now Playing.
 //
 // The worker serves the panel's own requests on a loopback port, and writes where to find it to
 // ~/.orca-now-playing/bridge.json (only you can read it):
