@@ -34,7 +34,7 @@ Needs Orca 1.4.248 or newer.
 1. Open [the plugin's page](https://onorca.dev/plugins/bautistapessagno.now-playing) and click
    **Open in Orca**, or in Orca: Settings → Plugins → search **Now Playing** in the community
    catalog. By hand: **Install plugin** → Git URL →
-   `https://github.com/BautistaPessagno/orca-spotify#v0.4.0`.
+   `https://github.com/BautistaPessagno/orca-spotify#v1.0.0`.
 2. Full-access plugins need Orca's separate setting that allows them (off by default).
 3. Review what it asks for and click **Enable**. It asks for its own settings (the backend and
    your Client ID) and its own encrypted secrets (the Spotify login).
