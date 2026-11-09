@@ -1,7 +1,7 @@
 // What every backend shares: command names, the sentences the UI shows, and the error type.
 //
 //   Backend {
-//     id            'applescript' | 'webapi'
+//     id            'applescript' | 'webapi' | 'applemusic'
 //     capabilities  what the panel may draw (repeat modes, seek step, tabs, poll intervals)
 //     settle        { tries, stepMs } for runAndSettle
 //     getState()    normalized state, never rejects
@@ -9,7 +9,8 @@
 //   }
 //
 // `seek` takes milliseconds on every backend; AppleScript rounds to whole seconds.
-// `playUri` plays a Spotify URI on both: a track alone, or an album, playlist or artist.
+// `playUri` plays a Spotify URI on both Spotify backends: a track alone, or an album, playlist or
+// artist. Apple Music refuses it (MUSIC_MESSAGES.noSpotify).
 
 export const COMMAND_NAMES = Object.freeze([
   'playpause',
@@ -32,7 +33,13 @@ export const PLAYABLE_URI = /^spotify:(track|episode|album|playlist|artist):[A-Z
 
 export const REPEAT_MODES = Object.freeze(['off', 'context', 'track'])
 
-export const BACKEND_IDS = Object.freeze(['applescript', 'webapi'])
+export const BACKEND_IDS = Object.freeze(['applescript', 'webapi', 'applemusic'])
+
+// The two services the panel's switch moves between. Spotify is reached through the backend the
+// `backend` setting picks; Apple Music has one backend, the Music app on a Mac.
+export const SERVICES = Object.freeze(['spotify', 'applemusic'])
+
+export const serviceOf = (backendId) => (backendId === 'applemusic' ? 'applemusic' : 'spotify')
 
 // What a search can look for (backends with the `search` capability).
 export const SEARCH_TYPES = Object.freeze(['track', 'album', 'artist', 'playlist', 'show', 'episode'])
@@ -51,6 +58,18 @@ export const MESSAGES = Object.freeze({
   quota: 'Your Spotify app’s request quota ran out. Now Playing tries again in 5 minutes.',
   noOpen: 'The Spotify Web API can’t open Spotify. Open it on any device.',
   needsScopes: 'Reconnect Spotify to turn on Home, your library and Liked Songs.'
+})
+
+// What the Apple Music backend says instead, so no Spotify wording shows while it is selected.
+export const MUSIC_MESSAGES = Object.freeze({
+  unsupported: 'Apple Music works through the Music app on macOS, so Now Playing can’t reach it on this computer. Switch to Spotify instead.',
+  closed: 'Music is not open. Open the Music app and try again.',
+  permission:
+    'Orca is not allowed to control Music. Open System Settings → Privacy & Security → Automation, turn on Music under Orca, then try again.',
+  timeout: 'Music did not answer within 3 seconds.',
+  noSpotify: 'Apple Music can’t play Spotify links or URIs. Switch to Spotify in the Now Playing panel to play them.',
+  // Search, the queue, devices, playlists, Home and likes: what the Web API adds for Spotify.
+  lacks: 'Apple Music can’t do that from Now Playing: it plays, pauses, skips, seeks and sets volume, shuffle and repeat in the Music app. Switch to Spotify for search, the queue, devices and your library.'
 })
 
 export class SpotifyError extends Error {
