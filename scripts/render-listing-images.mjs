@@ -1,7 +1,8 @@
 // Renders the plugin directory's cover and screenshots into images/ from the real panel/index.html.
 // The panel runs unchanged; a stand-in window.orca answers its requests from an invented catalog
-// with generated artwork, so no real album art or Spotify branding ends up in the listing. A short
-// script per shot then moves the panel to the view it shows (Home, Your Library, an album…).
+// with generated artwork, as the Spotify backends or as the Apple Music one, so no real album art
+// and no Spotify or Apple branding ends up in the listing: the services are named in text only.
+// A short script per shot then moves the panel to the view it shows (Home, Your Library, an album…).
 //
 //   node scripts/render-listing-images.mjs           # all of them
 //   node scripts/render-listing-images.mjs cover     # one
@@ -200,11 +201,45 @@ const DESKTOP_INFO = {
   connection: { connected: false }
 }
 
+// Apple Music, through the Music app on a Mac: the player only, its covers asked for by the
+// track's persistent ID, which the stand-in answers with a generated image.
+const MUSIC_INFO = {
+  id: 'applemusic',
+  service: 'applemusic',
+  capabilities: { repeatModes: ['off', 'context', 'track'], seekStepMs: 1000, volume: true, open: true, artwork: 'data', poll: { playing: 600000, paused: 600000, hidden: 600000 } },
+  available: ['applescript', 'webapi', 'applemusic'],
+  connection: { connected: false }
+}
+
+// Invented persistent IDs, one per track the Music shots play.
+const MUSIC_IDS = { neon: '4F3A2B1C0D9E8F70', lanterns: '7A1C3E5B9D2F4A60', glass: '2B8D4F6A1C3E5B70' }
+
+// What the Music app reports: no device, context or links; repeat one in the dark shot shows
+// the mode Spotify's desktop app doesn't have.
+const music = (stateName) => {
+  const state = STATES[stateName]
+  const id = MUSIC_IDS[stateName]
+  const { title, artist, album, durationMs } = state.track
+  return {
+    backend: 'applemusic',
+    status: state.status,
+    volume: state.volume,
+    shuffle: state.shuffle,
+    repeat: stateName === 'neon' ? 'track' : state.repeat,
+    positionMs: state.positionMs,
+    track: { title, artist, album, durationMs, uri: `applemusic:track:${id}`, id, artworkUrl: `applemusic-artwork:${id}` }
+  }
+}
+
 // What the desktop app reports: no device, context or links.
 const desktop = (state) => ({ ...state, device: undefined, context: undefined, track: { ...state.track, url: undefined } })
 
 // Every request the panel can make, answered from the catalog.
 function answers(stateName, backend = 'webapi') {
+  if (backend === 'applemusic') {
+    const state = music(stateName)
+    return { 'backend.info': MUSIC_INFO, 'player.state': state, 'player.command': state, 'agents.info': { access: true, bridge: true, skill: ['Claude Code'] } }
+  }
   if (backend === 'applescript') {
     const state = desktop(STATES[stateName])
     return { 'backend.info': DESKTOP_INFO, 'player.state': state, 'player.command': state, 'agents.info': { access: true, bridge: true, skill: ['Claude Code'] } }
@@ -239,10 +274,12 @@ function panelDoc(stateName, theme, steps = '', backend = 'webapi') {
   const stub = `<style>:root { ${tokens} } html, body { scrollbar-width: none; } ::-webkit-scrollbar { display: none; }</style><script>
     (function () {
       var A = ${JSON.stringify(answers(stateName, backend))}
+      // Apple Music asks for its cover by persistent ID; the generated image stands in.
+      var MUSIC_ART = ${JSON.stringify(backend === 'applemusic' ? { [music(stateName).track.artworkUrl]: STATES[stateName].track.artworkUrl } : {})}
       var copy = function (value) { return value === undefined ? undefined : JSON.parse(JSON.stringify(value)) }
       window.orca = Object.freeze({
         plugin: { request: function (name, input) {
-          if (name === 'player.artwork') return Promise.resolve({ url: input.url, dataUrl: input.url })
+          if (name === 'player.artwork') return Promise.resolve({ url: input.url, dataUrl: MUSIC_ART[input.url] || input.url })
           if (name === 'library.page' && A['library.page']) return Promise.resolve(copy(A['library.page'][input.uri]))
           if (!(name in A)) return Promise.reject(Object.assign(new Error('not in the demo'), { code: 'unknown_method' }))
           return Promise.resolve(copy(A[name]))
@@ -320,6 +357,10 @@ function page(body, { theme = 'dark', glow = '#e0617a', glow2 = '#5b6cff' } = {}
     .chips span { font-size: 19px; font-weight: 550; padding: 10px 18px; border-radius: 999px;
       border: 1px solid ${dark ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.12)'}; background: ${dark ? 'rgba(255,255,255,0.04)' : '#fff'}; }
     .chips span.hot { border-color: color-mix(in srgb, #1ed760 60%, transparent); color: #1ed760; background: color-mix(in srgb, #1ed760 9%, transparent); }
+    .chips span.red { border-color: color-mix(in srgb, #fc3c44 60%, transparent); color: #ff6b72; background: color-mix(in srgb, #fc3c44 10%, transparent); }
+    /* Which service a panel shows: its name in text, with the accent the panel uses. No logos. */
+    .svc { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; font-size: 19px; font-weight: 650; letter-spacing: -0.01em; }
+    .svc i { width: 10px; height: 10px; border-radius: 50%; background: var(--dot); }
     ul.feats { list-style: none; padding: 0; margin: 34px 0 0; display: grid; gap: 15px; font-size: 21px; }
     ul.feats li { display: flex; gap: 14px; align-items: baseline; }
     ul.feats li::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: #1ed760; transform: translateY(-3px); }
@@ -350,17 +391,31 @@ const AGENT_SESSION = [
 ]
 
 const SCENES = {
+  // Spotify and Apple Music side by side, each named above its panel, inside the middle 840 px.
   cover: () =>
     page(`
     <div style="position:absolute;left:110px;top:150px;width:640px">
       <div class="eyebrow">Plugin for Orca</div>
       <h1>Now Playing</h1>
-      <p class="lead">Spotify in Orca's sidebar, and in your coding agents' hands.</p>
-      <div class="chips"><span>Home</span><span>Your Library</span><span>Search</span><span>Devices</span><span class="hot">Agents</span></div>
+      <p class="lead">Spotify or Apple Music in Orca's sidebar, and in your coding agents' hands.</p>
+      <div class="chips"><span class="hot">Spotify</span><span class="red">Apple Music</span><span>Your Library</span><span>Agents</span></div>
     </div>
-    ${terminal(AGENT_SESSION.slice(0, 4), { width: 600, style: 'position:absolute;left:110px;top:580px' })}
-    ${panel('library', { height: 780, zoom: 1.08, style: 'position:absolute;left:1190px;top:70px;transform:rotate(2.5deg);opacity:0.9' })}
-    ${panel('player', { height: 780, zoom: 1.08, style: 'position:absolute;left:830px;top:100px' })}`, { glow: '#ff6f91', glow2: '#2de2e6' }),
+    ${terminal(AGENT_SESSION.slice(0, 4), { width: 600, style: 'position:absolute;left:110px;top:590px' })}
+    <div style="position:absolute;left:818px;top:84px"><div class="svc" style="--dot:#1ed760"><i></i>Spotify</div>${panel('player', { height: 790 })}</div>
+    <div style="position:absolute;left:1198px;top:84px"><div class="svc" style="--dot:#fc3c44"><i></i>Apple Music</div>${panel('player', { state: 'glass', theme: 'light', backend: 'applemusic', height: 790 })}</div>`, { glow: '#ff6f91', glow2: '#2de2e6' }),
+
+  // The Music look in Orca's light and dark themes, the switch at the bottom of each.
+  'apple-music': () =>
+    page(`
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:48px">
+      <div style="max-width:430px">
+        <div class="eyebrow">Apple Music too</div>
+        <h2>The Music app, in its own look.</h2>
+        <p class="lead">Flip the switch under the player. Play, skip, seek, shuffle and all three repeat modes, in Orca's light and dark themes.</p>
+      </div>
+      ${panel('player', { state: 'glass', theme: 'light', backend: 'applemusic', height: 680, zoom: 1.08 })}
+      ${panel('player', { state: 'neon', theme: 'dark', backend: 'applemusic', height: 680, zoom: 1.08 })}
+    </div>`, { glow: '#fc3c44', glow2: '#7a5cff' }),
 
   library: () =>
     page(`
@@ -376,14 +431,14 @@ const SCENES = {
 
   agents: () =>
     page(`
-    <div style="position:absolute;left:110px;top:0;bottom:0;display:flex;flex-direction:column;justify-content:center;width:560px">
+    <div style="position:absolute;left:110px;top:0;bottom:0;display:flex;flex-direction:column;justify-content:center;width:530px">
       <div class="eyebrow">For your agents</div>
       <h2>Your agents can pick the music too</h2>
-      <p class="lead">Claude Code, Codex or any script runs <b style="color:inherit;font-weight:600">now-playing</b>: play, pause, skip, search, queue, like and switch speakers.</p>
+      <p class="lead">Claude Code, Codex or any script runs <b style="color:inherit;font-weight:600;white-space:nowrap">now-playing</b>: play, pause, skip, search, queue, like and switch speakers.</p>
       <ul class="feats">
         <li>Turn it on with one click in the panel</li>
         <li>Installs a skill so agents know how</li>
-        <li>Local only: a loopback port and a token only you can read</li>
+        <li>Local only: a loopback port and a token just for you</li>
       </ul>
     </div>
     ${terminal([
@@ -395,13 +450,13 @@ const SCENES = {
       ['run', 'now-playing like'],
       ['out', 'Saved spotify:track:t9 to your library.']
     ], { width: 540, style: 'position:absolute;left:650px;top:190px' })}
-    ${panel('player', { height: 700, zoom: 1.0, style: 'position:absolute;left:1220px;top:150px' })}`, { glow: '#1ed760', glow2: '#7a5cff' }),
+    ${panel('player', { height: 790, zoom: 1.0, style: 'position:absolute;left:1220px;top:105px' })}`, { glow: '#1ed760', glow2: '#7a5cff' }),
 
   player: () =>
     page(`
     <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:56px">
       <div style="max-width:470px">
-        <div class="eyebrow">Two ways in</div>
+        <div class="eyebrow">Two ways into Spotify</div>
         <h2>No setup on a Mac. Any device with your account.</h2>
         <p class="lead">With the Spotify app on a Mac it just works, in your Orca theme. Connect your account to pick the speaker.</p>
       </div>
