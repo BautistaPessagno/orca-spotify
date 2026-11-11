@@ -4,7 +4,7 @@
   "execution": "trusted-worker",
   "id": "now-playing",
   "name": "Now Playing",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Spotify or Apple Music in Orca's sidebar: Home, your library, search, queue and devices for Spotify, the Music app's player for Apple Music, plus a now-playing status bar item. Your coding agents can play, pause, search and queue too. Works with the Spotify or Music app on a Mac out of the box. Not affiliated with Spotify or Apple.",
   "author": {
     "name": "Bautista Pessagno",
