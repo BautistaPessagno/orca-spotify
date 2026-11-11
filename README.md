@@ -47,8 +47,9 @@ The first time you use it, macOS asks whether Orca may control Spotify. Allow it
 the prompt: System Settings → Privacy & Security → Automation → Orca → turn on Spotify.
 
 Apple Music asks the same once, for Music. If you denied it: System Settings → Privacy &
-Security → Automation → Orca → turn on Music. Now Playing never opens Music by itself; the panel
-offers **Open Music** when it's closed.
+Security → Automation → Orca → turn on Music. Now Playing never opens either app by itself; the
+panel offers **Open Spotify** or **Open Music** when it's closed. The button starts the app in the
+background, so Orca keeps the focus, and shows the player once the app answers.
 
 ### Spotify Web API (Linux, Windows, or a Mac by choice)
 
@@ -63,7 +64,10 @@ Open the **Now Playing** panel; it walks you through these steps:
    a public identifier, not a secret; nothing secret is ever pasted.
 5. Click **Connect with Spotify**. Orca asks once whether the plugin may open
    accounts.spotify.com. Approve in the browser, then go back to Orca.
-6. Open Spotify on any device. The player shows up.
+6. Open Spotify on any device. The player shows up. On a Mac, the panel's **Open Spotify** button
+   does it for you: it starts the Spotify desktop app, waits for it to appear among your
+   devices, and makes it the active device (paused: opening the app starts no music). Without the
+   app, or off macOS, the panel says so and offers Spotify's web player instead.
 
 Spotify ends the login every 6 months; the panel warns a month ahead and offers **Reconnect**.
 
@@ -85,6 +89,7 @@ whichever the panel's switch has on:
 ~/.orca-now-playing/now-playing play "lofi beats" --playlist     # or --album, --artist
 ~/.orca-now-playing/now-playing play spotify:album:…             # a URI or open.spotify.com link
 ~/.orca-now-playing/now-playing pause | next | volume 30 | like | queue | devices
+~/.orca-now-playing/now-playing open                             # start the app if it is closed
 ~/.orca-now-playing/now-playing help
 ```
 
@@ -100,8 +105,9 @@ How it works: while the plugin is enabled its worker serves the panel's own requ
 only you can read. Browsers can't call it. `play <uri>`, pause, skip, volume and status work with
 the desktop app on a Mac; search, the queue, devices and likes need the Web API. With Apple Music,
 `status`, `play`, `pause`, `next`, `previous`, `shuffle`, `repeat`, `volume` and `seek` work, and
-the rest answer with a sentence saying Apple Music can't do it. Turn it off with **Agent access**
-in the plugin's settings. The CLI needs Node 20 or newer.
+the rest answer with a sentence saying Apple Music can't do it. `open` starts the app (on a Mac;
+with the Web API it also makes this computer the active device) and says why when it can't. Turn
+it off with **Agent access** in the plugin's settings. The CLI needs Node 20 or newer.
 
 ## Sidebar panel
 
@@ -122,7 +128,7 @@ Your Library: your playlists, Liked Songs, albums, artists and podcasts, each wi
 | Shuffle                             | yes                         | yes               | yes                 |
 | Repeat                              | on / off                    | off / all / track | off / all / one     |
 | Cover art                           | yes                         | yes               | yes, from the app   |
-| Open the app if it's closed         | yes                         | no                | yes                 |
+| Open the app if it's closed         | yes                         | yes (on a Mac)    | yes                 |
 | Switch device                       | no                          | yes               | no                  |
 | Queue, add to queue                 | no                          | yes               | no                  |
 | Search, play an album or playlist   | no                          | yes               | no                  |
@@ -173,6 +179,8 @@ Layout:
 - `bin/now-playing.mjs`: the `now-playing` CLI, copied to `~/.orca-now-playing/`.
 - `src/panel-protocol.mjs`: the handlers the panel calls with `orca.plugin.request`.
 - `src/settle.mjs`: waits for Spotify to apply a command before reading its state.
+- `src/open-app.mjs`: the panel's Open Spotify / Open Music: starts the app, waits for it (or, with
+  the Web API, for this computer to show up among the Connect devices) and says why when it can't.
 - `panel/index.html`: the sidebar panel.
 - `images/`: the plugin directory's cover and screenshots; the cover is also the preview when
   someone shares the plugin's link. `node scripts/render-listing-images.mjs` renders them from

@@ -1,5 +1,6 @@
 // Apple's Music app on macOS, driven through osascript like the Spotify desktop app. Every
-// script checks `application "Music" is running` first so nothing here ever launches Music.
+// script checks `application "Music" is running` first so nothing here launches Music except the
+// explicit `open` command.
 //
 // Music's dictionary differs from Spotify's: durations and positions are seconds (reals), repeat
 // is `song repeat` (off, one, all), shuffle is `shuffle enabled`, and artwork is image data on the
@@ -8,7 +9,7 @@ import { execFile } from 'node:child_process'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { MUSIC_MESSAGES, REPEAT_MODES, SpotifyError, errorState } from '../src/backend.mjs'
+import { MUSIC_MESSAGES, REPEAT_MODES, SpotifyError, errorState, isAppMissing } from '../src/backend.mjs'
 
 const SEP = '\u001f'
 const TIMEOUT_MS = 3000
@@ -245,8 +246,9 @@ export function createAppleMusicBackend({ exec = execFile, platform = process.pl
     async command(name, value) {
       ensureMac()
       if (name === 'open') {
-        await run('/usr/bin/open', ['-b', 'com.apple.Music']).catch((error) => {
-          throw classifyOsascriptError(error)
+        // -g keeps it in the background, so Orca keeps the focus while Music starts.
+        await run('/usr/bin/open', ['-g', '-b', 'com.apple.Music']).catch((error) => {
+          throw isAppMissing(error) ? new SpotifyError('not-installed', MUSIC_MESSAGES.notInstalled) : classifyOsascriptError(error)
         })
         return true
       }

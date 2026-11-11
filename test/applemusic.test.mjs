@@ -167,10 +167,22 @@ test('every shared command but playUri is one Music knows', async () => {
   }
 })
 
-test('open launches Music only when asked, by bundle id', async () => {
+test('open launches Music only when asked, by bundle id, in the background', async () => {
   const { exec, calls } = fakeExec('')
   await createAppleMusicBackend({ exec, platform: 'darwin' }).command('open')
-  assert.deepEqual(calls[0], { file: '/usr/bin/open', args: ['-b', 'com.apple.Music'] })
+  assert.deepEqual(calls[0], { file: '/usr/bin/open', args: ['-g', '-b', 'com.apple.Music'] })
+})
+
+test('open says so when the Music app is missing', async () => {
+  const lost = Object.assign(new Error('Command failed'), {
+    stderr: 'LSCopyApplicationURLsForBundleIdentifier() failed while trying to determine the application with bundle identifier com.apple.Music.\n'
+  })
+  await assert.rejects(createAppleMusicBackend({ exec: fakeExec(lost).exec, platform: 'darwin' }).command('open'), (error) => {
+    assert.equal(error.kind, 'not-installed')
+    assert.match(error.message, /Music/)
+    assert.doesNotMatch(error.message, /Spotify/)
+    return true
+  })
 })
 
 test('describes itself: three repeat modes, nothing the panel can’t use', () => {

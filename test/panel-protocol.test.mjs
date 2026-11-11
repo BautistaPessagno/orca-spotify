@@ -161,6 +161,23 @@ test('transfer and play return the player state after they apply', async () => {
   assert.equal((await handlers['player.playContext']({ contextUri: 'spotify:album:1' })).status, 'playing')
 })
 
+test('app.open starts the app through the opener and shows the state it ends on', async () => {
+  const calls = []
+  const result = { opened: true, state: { status: 'paused', track: null } }
+  const apps = { open: async () => (calls.push('open'), result) }
+  const spotify = fakeSpotify()
+  const handlers = createPanelHandlers(spotify, { apps })
+  assert.equal(await handlers['app.open'](), result)
+  assert.deepEqual(calls, ['open'])
+  // A refusal is an answer, not an error: the panel says why and offers the link.
+  const refusal = { opened: false, reason: 'not-installed', message: 'Spotify is not installed on this Mac.' }
+  assert.equal(await createPanelHandlers(spotify, { apps: { open: async () => refusal } })['app.open'](), refusal)
+})
+
+test('without an opener there is no app.open to call', () => {
+  assert.equal(createPanelHandlers(fakeSpotify())['app.open'], undefined)
+})
+
 test('library handlers say so when the active backend has no such feature', async () => {
   const { handlers } = webSetup({ backend: 'applescript', platform: 'darwin' })
   await assert.rejects(handlers['player.devices'](), /Web API/)

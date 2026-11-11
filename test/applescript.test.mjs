@@ -97,10 +97,29 @@ test('command builds the expected statement and validates volume', async () => {
   await assert.rejects(spotify.command('rm -rf'), { kind: 'invalid' })
 })
 
-test('open launches Spotify only when asked', async () => {
+test('open launches Spotify only when asked, in the background so Orca keeps focus', async () => {
   const { exec, calls } = fakeExec('')
   await createAppleScriptBackend({ exec, platform: 'darwin' }).command('open')
-  assert.deepEqual(calls[0], { file: '/usr/bin/open', args: ['-a', 'Spotify'] })
+  assert.deepEqual(calls[0], { file: '/usr/bin/open', args: ['-g', '-b', 'com.spotify.client'] })
+})
+
+test('open says so when Spotify is not installed', async () => {
+  const lost = Object.assign(new Error('Command failed'), {
+    stderr: 'LSCopyApplicationURLsForBundleIdentifier() failed while trying to determine the application with bundle identifier com.spotify.client.\n'
+  })
+  await assert.rejects(createAppleScriptBackend({ exec: fakeExec(lost).exec, platform: 'darwin' }).command('open'), (error) => {
+    assert.equal(error.kind, 'not-installed')
+    assert.match(error.message, /Spotify is not installed/)
+    return true
+  })
+  const named = Object.assign(new Error('Command failed'), { stderr: "Unable to find application named 'Spotify'\n" })
+  await assert.rejects(createAppleScriptBackend({ exec: fakeExec(named).exec, platform: 'darwin' }).command('open'), { kind: 'not-installed' })
+})
+
+test('open off macOS is refused before anything runs', async () => {
+  const { exec, calls } = fakeExec('')
+  await assert.rejects(createAppleScriptBackend({ exec, platform: 'linux' }).command('open'), { kind: 'unsupported' })
+  assert.equal(calls.length, 0)
 })
 
 test('describes itself as a backend', () => {

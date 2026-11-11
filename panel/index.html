@@ -315,6 +315,24 @@
       .btn:hover { opacity: 0.9; }
       .btn:disabled { opacity: 0.4; cursor: default; }
       .btn.small { margin: 0; padding: 4px 10px; font-size: 12px; }
+      /* A message's buttons: the main one, and the quieter one beside it (Try again). */
+      .empty .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
+      .empty .actions .btn { margin-top: 0; }
+      .btn.secondary { background: transparent; color: var(--fg); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fg) 24%, transparent); }
+      .btn.secondary:hover { background: var(--hover); opacity: 1; }
+      /* Waiting for the app to start: the main button turns into "Opening…" with a small spinner. */
+      .btn.busy { display: inline-flex; align-items: center; gap: 8px; }
+      .btn.busy:disabled { opacity: 0.75; }
+      .btn.busy::before {
+        content: '';
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        border: 2px solid currentColor;
+        border-right-color: transparent;
+        animation: spin 800ms linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
 
       .setup { padding: 18px 18px 8px; display: grid; gap: 14px; }
       .setup h2 { margin: 0; font-size: 16px; font-weight: 650; }
@@ -658,6 +676,8 @@
       .web .field input { background: #242424; border-color: #7c7c7c; }
       .web #connect { width: 100%; height: 48px; margin-top: 4px; background: var(--accent); color: #000000; font-size: 15px; font-weight: 800; }
       .web .btn { background: #ffffff; color: #000000; }
+      .web .btn.secondary { background: transparent; color: #ffffff; box-shadow: inset 0 0 0 1px #7c7c7c; }
+      .web .btn.secondary:hover { background: #2a2a2a; }
       .web .footer { padding: 4px 16px 12px; }
 
       /* ---------- the Spotify / Apple Music switch ----------
@@ -770,6 +790,7 @@
       [data-service='applemusic'] .empty .badge { width: 56px; height: 56px; border-radius: 14px; background: var(--am-tint); color: var(--accent); }
       [data-service='applemusic'] .empty b { font-size: 15px; letter-spacing: -0.01em; }
       [data-service='applemusic'] .btn { border-radius: 8px; padding: 6px 16px; background: var(--accent); color: #ffffff; font-size: 13px; }
+      [data-service='applemusic'] .btn.secondary { background: var(--am-segment); color: var(--fg); box-shadow: none; }
       [data-service='applemusic'] .footer { gap: 6px 10px; }
       /* The switch as a macOS segmented control. */
       [data-service='applemusic'] .service-switch { border-radius: 8px; background: var(--am-segment); }
@@ -870,11 +891,14 @@
       <div class="stale" id="stale" hidden>Spotify asked to slow down; this may be a few seconds old.</div>
     </main>
 
-    <div class="empty" id="v-message" hidden>
+    <div class="empty" id="v-message" aria-live="polite" hidden>
       <div class="badge"><svg><use href="#i-music" id="msg-icon" /></svg></div>
       <b id="msg-title"></b>
       <p id="msg-body"></p>
-      <button type="button" class="btn" id="msg-action" hidden></button>
+      <div class="actions" id="msg-actions">
+        <button type="button" class="btn" id="msg-action" hidden></button>
+        <button type="button" class="btn secondary" id="msg-secondary" hidden></button>
+      </div>
       <div class="rows" id="msg-rows" hidden></div>
     </div>
 
@@ -1063,6 +1087,7 @@
       // Until backend.info answers: the desktop app's intervals.
       var DEFAULT_CAPS = { repeatModes: ['off', 'context'], seekStepMs: 1000, poll: { playing: 1000, paused: 1000, hidden: 4000 } }
       var DASHBOARD_URL = 'https://developer.spotify.com/dashboard'
+      var WEB_PLAYER_URL = 'https://open.spotify.com'
       var LOGIN_WATCH_MS = 3 * 60 * 1000
 
       var info = null // backend.info: { id, capabilities, available, connection }
@@ -1089,9 +1114,17 @@
       var requestSeq = 0
       var appliedSeq = 0
       var commandsInFlight = 0
+      // "Open Spotify" / "Open Music": the backend id the request was made for while the worker
+      // starts the app and waits for it (up to ~22 s), and what it said when it gave up.
+      var opening = null
+      var openFailure = null // { message, link? }
+      // What the message view shows now, so a poll that finds the same thing does not redraw it.
+      var shownMessage = ''
+      var messageDevices = []
 
-      // Input must be JSON, so leave it out rather than send undefined.
-      function request(name, input) {
+      // Input must be JSON, so leave it out rather than send undefined. `options` is { timeoutMs }.
+      function request(name, input, options) {
+        if (options) return orca.plugin.request(name, input === undefined ? {} : input, options)
         return input === undefined ? orca.plugin.request(name) : orca.plugin.request(name, input)
       }
 
@@ -1111,6 +1144,7 @@
       var SERVICE_TEXT = {
         spotify: {
           name: 'Spotify',
+          app: 'Spotify',
           closedTitle: 'Spotify is not open',
           closedBody: 'Open the Spotify desktop app and this panel updates by itself.',
           open: 'Open Spotify',
@@ -1120,6 +1154,7 @@
         },
         applemusic: {
           name: 'Apple Music',
+          app: 'Music',
           closedTitle: 'Music is not open',
           closedBody: 'Open the Music app and this panel updates by itself.',
           open: 'Open Music',
@@ -1265,16 +1300,27 @@
         $('np-from-name').hidden = !name
       }
 
-      function showMessage(icon, title, body, action) {
+      // `action` is the main button, `secondary` the quieter one beside it; each { label, run }.
+      // A main button with `busy` is disabled and spins: something is under way.
+      function showMessage(icon, title, body, action, secondary) {
         $('msg-icon').setAttribute('href', icon)
         $('msg-title').textContent = title
         $('msg-body').textContent = body
         $('msg-action').hidden = !action
+        $('msg-secondary').hidden = !secondary
+        $('msg-actions').hidden = !action && !secondary
         $('msg-rows').hidden = true
         $('msg-rows').textContent = ''
+        shownMessage = ''
         if (action) {
           $('msg-action').textContent = action.label
-          $('msg-action').onclick = action.run
+          $('msg-action').onclick = action.run || null
+          $('msg-action').disabled = Boolean(action.busy)
+          $('msg-action').classList.toggle('busy', Boolean(action.busy))
+        }
+        if (secondary) {
+          $('msg-secondary').textContent = secondary.label
+          $('msg-secondary').onclick = secondary.run
         }
         document.body.className = ''
         show('v-message')
@@ -1317,10 +1363,13 @@
         if (next.backend && info && next.backend !== info.id) {
           state = next
           tab = 'player'
+          openFailure = null
           return loadInfo().then(function () { render(next) }, function () {})
         }
         state = next
         stateAt = Date.now()
+        if (next.status !== 'closed' && next.status !== 'no-device') openFailure = null
+        if (next.status !== 'no-device') messageDevices = []
         if (next.backend === 'webapi' && next.status === 'playing') noteContext(next.context)
         if ((setupWanted && !isWebApi() && !isMusic()) || reconnecting) return renderSetup()
         switch (next.status) {
@@ -1328,14 +1377,10 @@
           case 'unauthenticated':
             return renderSetup()
           case 'closed':
-            return showMessage('#i-music', words().closedTitle, words().closedBody, {
-              label: words().open,
-              run: function () { command('open') }
-            })
+          case 'no-device':
+            return renderOpenable(next)
           case 'no-permission':
             return showMessage('#i-lock', words().permission, next.message, { label: 'Try again', run: poll })
-          case 'no-device':
-            return renderNoDevice(next)
           case 'rate-limited':
             return showMessage('#i-clock', 'Spotify asked to slow down', next.message, null)
           case 'unsupported':
@@ -1392,18 +1437,94 @@
         loadArtwork(next.track.artworkUrl)
       }
 
-      // No active device: list the ones Spotify knows, each with "Play here". The list is read
-      // again with each state read, so a device that comes online shows up.
-      function renderNoDevice(next) {
-        var showing = !$('v-message').hidden && $('msg-title').textContent === 'No active device'
-        if (!showing) showMessage('#i-device', 'No active device', next.message, { label: 'Try again', run: poll })
-        request('player.devices').then(function (devices) {
-          if (!state || state.status !== 'no-device') return
-          var rows = $('msg-rows')
-          rows.textContent = ''
-          devices.forEach(function (device) { rows.appendChild(deviceRow(device, 'Play here', true)) })
-          rows.hidden = !devices.length
-        }, function () {})
+      // The app is closed, or Spotify has no active device. Open <app> is the main button and Try
+      // again the other. The worker starts the app and waits for it; meanwhile the button spins,
+      // and when it gives up the message says why, with a link where there is a better thing to do.
+      // With the Web API the devices Spotify does know stay listed, each with "Play here".
+      function renderOpenable(next) {
+        var text = words()
+        var noDevice = next.status === 'no-device'
+        var icon = noDevice ? '#i-device' : '#i-music'
+        var title = noDevice ? 'No active device' : text.closedTitle
+        var body = noDevice ? next.message : text.closedBody
+        var main = { label: text.open, run: openApp }
+        if (isWebApi() && !canStartApp()) {
+          // Not a Mac: the Spotify app can't be started from here, so the web player is the way.
+          main = { label: 'Open Spotify on the web', run: function () { openExternal(WEB_PLAYER_URL) } }
+          body = 'No Spotify device is active. Open Spotify on any device, or use the web player.'
+        }
+        if (opening && info && opening === info.id) {
+          title = 'Opening ' + text.app + '…'
+          body = noDevice ? 'Waiting for it to show up as a device. This can take a few seconds.' : 'Waiting for ' + text.app + ' to start.'
+          main = { label: 'Opening…', busy: true }
+        } else if (openFailure) {
+          var link = openFailure.link
+          icon = '#i-alert'
+          title = 'Couldn’t open ' + text.app
+          body = openFailure.message
+          if (link) main = { label: link.label, run: function () { openExternal(link.url) } }
+        }
+        var key = [next.status, title, body, main.label].join('|')
+        if (key !== shownMessage || $('v-message').hidden) {
+          showMessage(icon, title, body, main, { label: 'Try again', run: tryAgain })
+          shownMessage = key
+          drawDeviceRows()
+        }
+        if (noDevice) {
+          request('player.devices').then(function (devices) {
+            if (!state || state.status !== 'no-device') return
+            messageDevices = devices
+            drawDeviceRows()
+          }, function () {})
+        }
+      }
+
+      function drawDeviceRows() {
+        var rows = $('msg-rows')
+        if (!state || state.status !== 'no-device' || $('v-message').hidden) return
+        rows.textContent = ''
+        messageDevices.forEach(function (device) { rows.appendChild(deviceRow(device, 'Play here', true)) })
+        rows.hidden = !messageDevices.length
+      }
+
+      // Only a Mac can start the Spotify app; the worker says so in backend.info.
+      function canStartApp() {
+        return Boolean(info && info.available && info.available.indexOf('applescript') !== -1)
+      }
+
+      function tryAgain() {
+        openFailure = null
+        shownMessage = ''
+        poll()
+      }
+
+      // "Open Spotify" / "Open Music". The reply is the state once the app is up, or why it isn't.
+      function openApp() {
+        if (opening || !info) return
+        opening = info.id
+        openFailure = null
+        var seq = ++requestSeq
+        if (state) render(state)
+        // The worker waits up to ~22 s for the app; a request's own limit is 30 s.
+        return request('app.open', {}, { timeoutMs: 60000 }).then(function (result) {
+          var from = opening
+          opening = null
+          if (result && result.opened) {
+            if (result.state && seq > appliedSeq && info && info.id === from) {
+              appliedSeq = seq
+              render(result.state)
+              return schedule()
+            }
+            return poll()
+          }
+          openFailure = { message: (result && result.message) || 'It could not be opened.', link: result && result.link }
+          if (state && (state.status === 'closed' || state.status === 'no-device')) render(state)
+        }, function (error) {
+          opening = null
+          // A worker from before this button (not restarted yet) can still open a closed app.
+          if (error && error.code === 'unknown_method' && state && state.status === 'closed') return command('open')
+          fail(error)
+        })
       }
 
       // ---------- setup ----------
@@ -2464,6 +2585,7 @@
       function switchBackend(backend) {
         stopWatching()
         tab = 'player'
+        openFailure = null
         return request('backend.select', { backend: backend }).then(function (next) {
           info = next
           return poll()
