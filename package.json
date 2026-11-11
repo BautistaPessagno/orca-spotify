@@ -1,6 +1,6 @@
 {
   "name": "orca-now-playing",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "Orca plugin that controls Spotify and Apple Music: their desktop apps on macOS, or any Spotify device through the Spotify Web API.",
