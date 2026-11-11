@@ -21,6 +21,7 @@ $NP status                         # what's playing (with its spotify: URI on Sp
 $NP play                           # resume
 $NP pause | toggle | next | previous
 $NP volume 30 | shuffle on | repeat all | seek 1:30
+$NP open                           # start the app if it is closed; starts no music
 ```
 
 Spotify only:
@@ -57,8 +58,10 @@ The CLI prints the reason and exits non-zero. Tell the user the sentence it prin
 - "This needs the Spotify Web API": search, queue, devices and likes need the user to connect
   Spotify in the Now Playing panel. `play <uri>`, pause, skip, volume and status work without it
   on a Mac.
-- "No Spotify device is active" / "Spotify is not open" / "Music is not open": ask the user to
-  open the app.
+- "No Spotify device is active" / "Spotify is not open" / "Music is not open": run `$NP open`,
+  then try again. It starts the app in the background and waits for it (with the Spotify Web API,
+  it also makes this computer the active device, paused). If it says it can't (the app is not
+  installed, or this is not a Mac), tell the user the sentence it printed.
 
 ## Without the CLI
 

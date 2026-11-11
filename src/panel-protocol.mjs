@@ -4,6 +4,7 @@
 //   player.state                              → state
 //   player.command      { cmd, value? }       → state after the command
 //   player.artwork      { url }               → { url, dataUrl } | { url, dataUrl: null }
+//   app.open                                  → { opened: true, state } | { opened: false, reason, message, link? }
 //   backend.info                              → { id, service, capabilities, available, connection }
 //   backend.select      { backend }           → backend.info; backend is a BACKEND_IDS id or
 //                                               'spotify' (back to the Spotify backend you had)
@@ -25,6 +26,9 @@
 //   library.page        { uri }               → an album, artist or playlist page
 //   library.saved       { uris }              → boolean[] (up to 20)
 //   library.save        { uri, saved }        → { saved }
+//
+// app.open starts the app the panel is driving (the Spotify or Music app, or Spotify for the Web API
+// to play on) and waits for it; see open-app.mjs. It is only there when `apps` is given.
 //
 // player.devices through library.save need a backend with that capability (the Web API); on
 // the Spotify desktop app and on Apple Music they reject with a sentence that says so.
@@ -98,7 +102,7 @@ function offsetOf(value, max = 1000) {
   return offset
 }
 
-export function createPanelHandlers(spotify, { fetchImpl = globalThis.fetch, auth, platform = process.platform, delay = wait } = {}) {
+export function createPanelHandlers(spotify, { fetchImpl = globalThis.fetch, auth, apps, platform = process.platform, delay = wait } = {}) {
   // Artwork is asked for repeatedly (the playing track, list rows); keep the last few.
   const artworkCache = new Map()
 
@@ -276,6 +280,15 @@ export function createPanelHandlers(spotify, { fetchImpl = globalThis.fetch, aut
       if (typeof input.saved !== 'boolean') throw bad('Say whether it should be saved.')
       await (await needs('library')).setSaved(uri, input.saved)
       return { saved: input.saved }
+    }
+  }
+
+  // Opening is an answer either way (started, or why not), so the panel can say which.
+  if (apps) {
+    handlers['app.open'] = async () => {
+      const result = await apps.open()
+      if (result.state) show(result.state)
+      return result
     }
   }
 

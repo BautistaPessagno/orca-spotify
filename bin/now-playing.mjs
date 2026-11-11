@@ -14,6 +14,9 @@ Usage: now-playing <command> [args] [--json]
 
 Player (Spotify and Apple Music)
   status                       What's playing (the default command)
+  open                         Start the app if it is closed, and wait for it. With the Spotify
+                               Web API it starts Spotify on this computer and makes it the active
+                               device (paused), like the panel's Open Spotify button
   play                         Resume
   pause | toggle | next | previous
   shuffle on|off
@@ -206,6 +209,18 @@ const COMMANDS = {
   help: async () => process.stdout.write(HELP + '\n'),
   status: async () => print(await request('player.state'), describe),
   now: async () => COMMANDS.status(),
+
+  open: async () => {
+    const result = await request('app.open')
+    if (!result?.opened) {
+      // Say what to do instead when there is something: a link is the best the plugin can do.
+      const message = result?.message ?? 'The app could not be opened.'
+      const error = new Error(result?.link ? `${message} ${result.link.label}: ${result.link.url}` : message)
+      error.code = result?.reason
+      throw error
+    }
+    print(result, ({ state }) => `${state?.backend === 'applemusic' ? 'Apple Music' : 'Spotify'} is open.\n${describe(state)}`)
+  },
 
   play: async () => {
     if (!words) return print(await command('play'), describe)

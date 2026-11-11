@@ -57,7 +57,9 @@ export const MESSAGES = Object.freeze({
   rateLimited: 'Spotify asked Now Playing to slow down. It tries again in a moment.',
   quota: 'Your Spotify app’s request quota ran out. Now Playing tries again in 5 minutes.',
   noOpen: 'The Spotify Web API can’t open Spotify. Open it on any device.',
-  needsScopes: 'Reconnect Spotify to turn on Home, your library and Liked Songs.'
+  needsScopes: 'Reconnect Spotify to turn on Home, your library and Liked Songs.',
+  notInstalled: 'Spotify is not installed on this Mac.',
+  cantStart: 'Now Playing can’t start Spotify on this computer. Open it on any device, or use the web player.'
 })
 
 // What the Apple Music backend says instead, so no Spotify wording shows while it is selected.
@@ -67,6 +69,7 @@ export const MUSIC_MESSAGES = Object.freeze({
   permission:
     'Orca is not allowed to control Music. Open System Settings → Privacy & Security → Automation, turn on Music under Orca, then try again.',
   timeout: 'Music did not answer within 3 seconds.',
+  notInstalled: 'The Music app was not found on this Mac.',
   noSpotify: 'Apple Music can’t play Spotify links or URIs. Switch to Spotify in the Now Playing panel to play them.',
   // Search, the queue, devices, playlists, Home and likes: what the Web API adds for Spotify.
   lacks: 'Apple Music can’t do that from Now Playing: it plays, pauses, skips, seeks and sets volume, shuffle and repeat in the Music app. Switch to Spotify for search, the queue, devices and your library.'
@@ -79,6 +82,11 @@ export class SpotifyError extends Error {
     if (extra) Object.assign(this, extra)
   }
 }
+
+// What /usr/bin/open prints when there is no such app: by name, or by bundle id.
+const APP_MISSING = /Unable to find application|LSCopyApplicationURLsForBundleIdentifier\(\) failed|cannot be found/i
+
+export const isAppMissing = (error) => APP_MISSING.test(String(error?.stderr ?? error?.message ?? ''))
 
 // Anything a backend throws, as a SpotifyError the UI can explain.
 export function classifyError(error) {

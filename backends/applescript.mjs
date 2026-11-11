@@ -1,8 +1,10 @@
 // Spotify desktop on macOS, driven through osascript. Every script checks
-// `application "Spotify" is running` first so nothing here ever launches Spotify.
+// `application "Spotify" is running` first so nothing here launches Spotify except the explicit
+// `open` command.
 import { execFile } from 'node:child_process'
-import { MESSAGES, PLAYABLE_URI, REPEAT_MODES, SpotifyError, errorState } from '../src/backend.mjs'
+import { MESSAGES, PLAYABLE_URI, REPEAT_MODES, SpotifyError, errorState, isAppMissing } from '../src/backend.mjs'
 
+const BUNDLE_ID = 'com.spotify.client'
 const SEP = '\u001f'
 const TIMEOUT_MS = 3000
 
@@ -147,8 +149,9 @@ export function createAppleScriptBackend({ exec = execFile, platform = process.p
     async command(name, value) {
       ensureMac()
       if (name === 'open') {
-        await run('/usr/bin/open', ['-a', 'Spotify']).catch((error) => {
-          throw classifyOsascriptError(error)
+        // -g keeps it in the background, so Orca keeps the focus while Spotify starts.
+        await run('/usr/bin/open', ['-g', '-b', BUNDLE_ID]).catch((error) => {
+          throw isAppMissing(error) ? new SpotifyError('not-installed', MESSAGES.notInstalled) : classifyOsascriptError(error)
         })
         return true
       }

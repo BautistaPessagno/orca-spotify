@@ -21,11 +21,13 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { classifyError } from './backend.mjs'
 
-// What agents may ask for: playback, devices, queue, search and the library. Not the login,
-// the backend choice or artwork data URLs, which are the person's or only the panel's business.
+// What agents may ask for: playback, starting the app, devices, queue, search and the library.
+// Not the login, the backend choice or artwork data URLs, which are the person's or only the
+// panel's business.
 export const AGENT_REQUESTS = Object.freeze([
   'player.state',
   'player.command',
+  'app.open',
   'player.devices',
   'player.transfer',
   'player.queue',

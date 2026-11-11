@@ -43,6 +43,7 @@ test('answers the player panel requests and the agent link', async () => {
   assert.deepEqual([...handlers.keys()].sort(), [
     'agents.enable',
     'agents.info',
+    'app.open',
     'auth.disconnect',
     'auth.start',
     'auth.status',

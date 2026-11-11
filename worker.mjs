@@ -10,6 +10,7 @@ import { createWebApiBackend } from './backends/webapi/backend.mjs'
 import { createClient } from './backends/webapi/client.mjs'
 import { createAgentBridge } from './src/agent-bridge.mjs'
 import { createAgentSkill } from './src/agent-skill.mjs'
+import { createAppOpener } from './src/open-app.mjs'
 import { createPanelHandlers } from './src/panel-protocol.mjs'
 import { createBackendSelector } from './src/select-backend.mjs'
 import { createStatusBar } from './src/status-bar.mjs'
@@ -40,7 +41,7 @@ export default function activate(orca, deps = {}) {
   const getState = spotify.getState
   spotify.getState = async () => statusBar.show(await getState())
 
-  const handlers = createPanelHandlers(spotify, { auth })
+  const handlers = createPanelHandlers(spotify, { auth, apps: createAppOpener({ spotify, backends }) })
   bridge = createAgentBridge({ handlers, version: VERSION, cliSource: file('./bin/now-playing.mjs'), log, ...deps.bridge })
   const skill = createAgentSkill({ source: file('./agent/SKILL.md'), log, ...deps.skill })
 

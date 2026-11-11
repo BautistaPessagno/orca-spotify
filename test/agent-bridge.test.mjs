@@ -23,7 +23,10 @@ const playing = {
 }
 
 const seen = []
+// What app.open answers next; a test sets it to a refusal.
+let opening = { opened: true, state: { status: 'stopped', track: null, backend: 'webapi' } }
 const handlers = {
+  'app.open': async () => (seen.push(['app.open']), opening),
   'player.state': async () => playing,
   'player.command': async (input) => (seen.push(['player.command', input]), { ...playing, status: input.cmd === 'pause' ? 'paused' : 'playing' }),
   'library.search': async (input) => (seen.push(['library.search', input]), { tracks: { items: [{ title: 'Dreams', artist: 'Fleetwood Mac', uri: 'spotify:track:dreams' }], total: 1, offset: 0 } }),
@@ -131,6 +134,37 @@ test('cli: play <words> searches and plays the best song; a link becomes a URI',
   seen.length = 0
   await cli('play', 'https://open.spotify.com/album/1weenld61qoidwYuZ1GESA?si=x')
   assert.deepEqual(seen, [['player.command', { cmd: 'playUri', value: 'spotify:album:1weenld61qoidwYuZ1GESA' }]])
+})
+
+test('cli: open starts the app and says what it found', async () => {
+  seen.length = 0
+  const { stdout } = await cli('open')
+  assert.deepEqual(seen, [['app.open']])
+  assert.match(stdout, /Spotify is open/)
+  assert.match(stdout, /Nothing is playing/)
+  assert.deepEqual(JSON.parse((await cli('open', '--json')).stdout), opening)
+  opening = { opened: true, state: { ...playing, backend: 'applemusic' } }
+  assert.match((await cli('open')).stdout, /Apple Music is open\.\n.*Glass Weather/s)
+})
+
+test('cli: open that could not start exits 1 with the sentence, and the link when there is one', async () => {
+  opening = {
+    opened: false,
+    reason: 'not-installed',
+    message: 'Spotify is not installed on this Mac.',
+    link: { label: 'Open Spotify on the web', url: 'https://open.spotify.com' }
+  }
+  await assert.rejects(cli('open'), (error) => error.code === 1 && /Spotify is not installed on this Mac\./.test(error.stderr) && /https:\/\/open\.spotify\.com/.test(error.stderr))
+  await assert.rejects(cli('open', '--json'), (error) => {
+    const body = JSON.parse(error.stdout)
+    return error.code === 1 && body.ok === false && body.error.code === 'not-installed' && /not installed/.test(body.error.message)
+  })
+  opening = { opened: false, reason: 'timeout', message: 'Spotify started, but it did not answer after 15 seconds.' }
+  await assert.rejects(cli('open'), (error) => error.code === 1 && !/https:/.test(error.stderr))
+})
+
+test('app.open is one of the requests agents may make', () => {
+  assert.ok(AGENT_REQUESTS.includes('app.open'))
 })
 
 test('cli: --json prints the raw answer', async () => {
